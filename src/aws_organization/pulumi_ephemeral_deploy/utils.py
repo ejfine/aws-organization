@@ -140,14 +140,14 @@ def get_config(key: str) -> str | int | dict[str, Any]:
     if (
         "value" in json_dict
     ):  # if the 'value' key is present, assume this is an actual attribute. Otherwise assume it's a nested dictionary
-        value = json_dict["value"]
+        value = json_dict["value"]  # type: ignore[reportUnknownVariableType] # TODO: understand this, so there can be better typing
         if not isinstance(value, int | str):
             raise NotImplementedError(
-                f"The value for config key {key} should always be a string or int, but it was found to be {value} which is {type(value)}. Original retrieved JSON was {json_str}"
+                f"The value for config key {key} should always be a string or int, but it was found to be {value} which is {type(value)}. Original retrieved JSON was {json_str}"  # type: ignore[reportUnknownArgumentType] # TODO: understand this, so there can be better typing
             )
         return value
-
-    return json_dict
+    assert isinstance(json_dict, str | int | dict)
+    return json_dict  # type: ignore[reportUnknownVariableType] # TODO: understand this, so there can be better typing
 
 
 def get_config_aws_account_id(key: str) -> str:
@@ -206,9 +206,13 @@ def get_stack(
     # account_id is a `str` when returned from `boto` and ConfigValue stores a `str`. However it is somehow an `int` when fetched back by get_config.
     # This is a problem when the account_id is prefixed with zeros.
     stack_config["proj:aws_account_id"] = ConfigValue(value=account_id)
-    backend_bucket = ssm_client.get_parameter(Name="/org-managed/infra-state-bucket-name")["Parameter"]["Value"]
+    backend_bucket_param = ssm_client.get_parameter(Name="/org-managed/infra-state-bucket-name")["Parameter"]
+    assert "Value" in backend_bucket_param, f"Expected 'Value' in {backend_bucket_param}"
+    backend_bucket = backend_bucket_param["Value"]
 
-    kms_key_id = ssm_client.get_parameter(Name="/org-managed/infra-state-kms-key-arn")["Parameter"]["Value"]
+    kms_key_id_param = ssm_client.get_parameter(Name="/org-managed/infra-state-kms-key-arn")["Parameter"]
+    assert "Value" in kms_key_id_param, f"Expected 'Value' in {kms_key_id_param}"
+    kms_key_id = kms_key_id_param["Value"]
     stack_config["proj:kms_key_id"] = ConfigValue(value=kms_key_id)
 
     secrets_provider = f"awskms:///{kms_key_id}?region={default_cloud_region}"  # TODO: add context parameters https://www.pulumi.com/docs/iac/concepts/secrets/
@@ -256,7 +260,7 @@ def common_tags(*, name: str = "", git_repository_url: str | None = None) -> dic
     }
 
 
-from pulumi_aws_native import TagArgs, TagArgsDict
+from pulumi_aws_native import TagArgs
 
 
 def common_tags_native(*, name: str = "", git_repository_url: str | None = None) -> list[TagArgs]:

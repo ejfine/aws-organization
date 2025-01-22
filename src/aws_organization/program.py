@@ -1,16 +1,14 @@
 import logging
-from functools import partial
 
-import pulumi
-from pulumi import export, ResourceOptions
+from pulumi import ComponentResource
+from pulumi import ResourceOptions
+from pulumi import export
 from pulumi_aws_native import organizations
-from .pulumi_ephemeral_deploy.utils import append_resource_suffix_template
+from pulumi_command.local import Command
+
+from .config import common_tags_native
 from .pulumi_ephemeral_deploy.utils import get_aws_account_id
 from .pulumi_ephemeral_deploy.utils import get_config
-from .config import common_tags_native
-from pulumi_aws import Provider
-from pulumi import ComponentResource, export
-from pulumi_command.local import Command
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +35,6 @@ class AwsAccount(ComponentResource):
 
 def pulumi_program() -> None:
     """Execute creating the stack."""
-    stack_name = pulumi.get_stack()
-    project_name = pulumi.get_project()
     aws_account_id = get_aws_account_id()
     export("aws-account-id", aws_account_id)
     env = get_config("proj:env")
@@ -47,9 +43,9 @@ def pulumi_program() -> None:
     # Create Resources Here
 
     organization_root_id = get_config("proj:org_root_id")
-    assert isinstance(
-        organization_root_id, str
-    ), f"Expected proj:org_root_id to be a string, got {organization_root_id} of type {type(organization_root_id)}"
+    assert isinstance(organization_root_id, str), (
+        f"Expected proj:org_root_id to be a string, got {organization_root_id} of type {type(organization_root_id)}"
+    )
     central_infra_ou = organizations.OrganizationalUnit(
         "CentralizedInfrastructure",
         name="CentralizedInfrastructure",
@@ -70,9 +66,16 @@ def pulumi_program() -> None:
         parent_id=organization_root_id,
         tags=common_tags_native(),
     )
-    non_qualified_workload_prod_ou = organizations.OrganizationalUnit(
+    _ = organizations.OrganizationalUnit(
         "NonQualifiedWorkloadProd",
         name="Prod",
+        parent_id=non_qualified_workload_ou.id,
+        tags=common_tags_native(),
+        opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
+    )
+    non_qualified_workload_dev_ou = organizations.OrganizationalUnit(
+        "NonQualifiedWorkloadDev",
+        name="Dev",
         parent_id=non_qualified_workload_ou.id,
         tags=common_tags_native(),
         opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
@@ -83,3 +86,5 @@ def pulumi_program() -> None:
         "enable-aws-service-access",
         create="aws organizations enable-aws-service-access --service-principal account.amazonaws.com",
     )
+
+    # TODO: delegate SSO management https://docs.aws.amazon.com/singlesignon/latest/userguide/delegated-admin-how-to-register.html
