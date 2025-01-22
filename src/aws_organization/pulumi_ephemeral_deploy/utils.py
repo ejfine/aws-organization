@@ -256,15 +256,18 @@ def common_tags(*, name: str = "", git_repository_url: str | None = None) -> dic
     }
 
 
-def common_tags_native(*, name: str = "", git_repository_url: str | None = None) -> list[dict[str, str]]:
+from pulumi_aws_native import TagArgs, TagArgsDict
+
+
+def common_tags_native(*, name: str = "", git_repository_url: str | None = None) -> list[TagArgs]:
     """Generate tags in the format expected in AWS Native."""
     tags = common_tags(
         name=name,
         git_repository_url=git_repository_url,
     )
-    native_tags: list[dict[str, str]] = []
+    native_tags: list[TagArgs] = []
     for key, value in tags.items():
-        native_tags.append({"key": key, "value": value})
+        native_tags.append(TagArgs(key=key, value=value))
     return native_tags
 
 

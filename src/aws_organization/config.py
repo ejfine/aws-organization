@@ -27,5 +27,5 @@ def generate_stack_config() -> dict[str, Any]:
     stack_config: dict[str, Any] = {}
 
     stack_config["proj:git_repository_url"] = ConfigValue(value=GIT_REPOSITORY_URL)
-
+    stack_config["proj:org_root_id"] = ConfigValue(value="r-2rsw")
     return stack_config
