@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: 677ce26
+_commit: 71e8a1f
 _src_path: gh:LabAutomationAndScreening/copier-aws-organization.git
 aws_management_account_id: '789893201852'
 description: Manage my AWS organization
