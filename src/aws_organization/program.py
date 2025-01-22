@@ -73,7 +73,7 @@ def pulumi_program() -> None:
         tags=common_tags_native(),
         opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
     )
-    non_qualified_workload_dev_ou = organizations.OrganizationalUnit(
+    _ = organizations.OrganizationalUnit(
         "NonQualifiedWorkloadDev",
         name="Dev",
         parent_id=non_qualified_workload_ou.id,
@@ -81,7 +81,7 @@ def pulumi_program() -> None:
         opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
     )
 
-    prod_infra_account = AwsAccount(ou=central_infra_prod_ou, account_name="centralized-infra-prod")
+    _ = AwsAccount(ou=central_infra_prod_ou, account_name="centralized-infra-prod")
     _ = Command(
         "enable-aws-service-access",
         create="aws organizations enable-aws-service-access --service-principal account.amazonaws.com",

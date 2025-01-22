@@ -17,6 +17,7 @@ from pulumi.automation import Stack
 from pulumi.automation import StackSettings
 from pulumi.automation import create_or_select_stack
 from pulumi.automation._stack import BaseResult
+from pulumi_aws_native import TagArgs
 
 logger = logging.getLogger(__name__)
 PROTECTED_ENVS = ("stag", "staging", "prod", "production")
@@ -258,9 +259,6 @@ def common_tags(*, name: str = "", git_repository_url: str | None = None) -> dic
         "stack-name": pulumi.get_stack(),
         "Name": name if name != "" else pulumi.get_stack(),
     }
-
-
-from pulumi_aws_native import TagArgs
 
 
 def common_tags_native(*, name: str = "", git_repository_url: str | None = None) -> list[TagArgs]:
