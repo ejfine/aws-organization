@@ -1,0 +1,9 @@
+# Changes here will be overwritten by Copier
+_commit: 5efd5f8
+_src_path: gh:LabAutomationAndScreening/copier-aws-organization.git
+description: Manage my AWS organization
+python_version: 3.12.7
+repo_name: aws-organization
+ssh_port_number: 51446
+use_windows_in_ci: false
+
