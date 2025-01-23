@@ -6,10 +6,18 @@ from pulumi import ResourceOptions
 from pulumi import export
 from pulumi_aws import identitystore as identitystore_classic
 from pulumi_aws import ssoadmin
+from pulumi_aws.iam import GetPolicyDocumentStatementArgs
+from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
+from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
+from pulumi_aws.iam import get_policy_document
+from pulumi_aws_native import Provider
+from pulumi_aws_native import ProviderAssumeRoleArgs
 from pulumi_aws_native import organizations
+from pulumi_aws_native import s3
+from pulumi_aws_native import ssm
 from pulumi_command.local import Command
 
-from .config import common_tags_native
+from .pulumi_ephemeral_deploy.utils import common_tags_native
 from .pulumi_ephemeral_deploy.utils import get_aws_account_id
 from .pulumi_ephemeral_deploy.utils import get_config
 
@@ -114,6 +122,32 @@ class AwsAccount(ComponentResource):
         export(f"{account_name}-role-name", self.account.role_name)
 
 
+def create_bucket_policy(bucket_name: str) -> str:
+    org_id = "o-2v54b6ap2r"  # TODO: get this programmatically
+    return get_policy_document(
+        statements=[
+            GetPolicyDocumentStatementArgs(
+                effect="Allow",
+                principals=[
+                    GetPolicyDocumentStatementPrincipalArgs(
+                        type="*",
+                        identifiers=["*"],  # Allows all principals
+                    )
+                ],
+                actions=["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+                resources=[f"arn:aws:s3:::{bucket_name}/*"],
+                conditions=[
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="StringEquals",
+                        variable="aws:PrincipalOrgID",
+                        values=[org_id],  # Limit to the AWS Organization
+                    ),
+                ],
+            )
+        ]
+    ).json
+
+
 def pulumi_program() -> None:
     """Execute creating the stack."""
     aws_account_id = get_aws_account_id()
@@ -154,18 +188,99 @@ def pulumi_program() -> None:
         tags=common_tags_native(),
         opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
     )
-    _ = organizations.OrganizationalUnit(
+    workload_dev_ou = organizations.OrganizationalUnit(
         "NonQualifiedWorkloadDev",
         name="Dev",
         parent_id=non_qualified_workload_ou.id,
         tags=common_tags_native(),
         opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
     )
+    central_infra_account_name = "central-infra-prod"
+    central_infra_account = AwsAccount(ou=central_infra_prod_ou, account_name=central_infra_account_name)
+    central_infra_role_arn = central_infra_account.account.id.apply(
+        lambda x: f"arn:aws:iam::{x}:role/OrganizationAccountAccessRole"
+    )
+    assume_role = ProviderAssumeRoleArgs(role_arn=central_infra_role_arn, session_name="blah")
+    central_infra_provider = Provider(
+        f"{central_infra_account_name}",
+        assume_role=assume_role,
+        allowed_account_ids=[central_infra_account.account.id],
+        region="us-east-1",
+        opts=ResourceOptions(
+            parent=central_infra_account,
+        ),
+    )
+    central_state_bucket = s3.Bucket(
+        "central-infra-state",
+        tags=common_tags_native(),
+        opts=ResourceOptions(
+            provider=central_infra_provider,
+            parent=central_infra_account,
+        ),
+    )
+    _ = ssm.Parameter(
+        "central-infra-state-bucket-name",
+        type=ssm.ParameterType.STRING,
+        name="/org-managed/infra-state-bucket-name",
+        # TODO: add tags...for some reason this doesn't use the standard tag format
+        value=central_state_bucket.bucket_name.apply(lambda x: f"{x}"),
+        opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
+    )
+    kms_key_arn = get_config("proj:kms_key_id")
+    assert isinstance(kms_key_arn, str), (
+        f"Expected proj:kms_key_id to be a string, got {kms_key_arn} of type {type(kms_key_arn)}"
+    )
+    _ = ssm.Parameter(
+        "central-infra-shared-kms-key-arn",
+        type=ssm.ParameterType.STRING,
+        name="/org-managed/infra-state-kms-key-arn",
+        # TODO: add tags...for some reason this doesn't use the standard tag format
+        value=kms_key_arn,
+        opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
+    )
 
-    central_infra_account = AwsAccount(ou=central_infra_prod_ou, account_name="central-infra-prod")
-    _ = Command(
-        "enable-aws-service-access",
-        create="aws organizations enable-aws-service-access --service-principal account.amazonaws.com",
+    # TODO: move this bucket policy to the central infra stack
+    # TODO: fix bucket policy to only allow access to objects prefixed with the principal's account ID
+    _ = central_state_bucket.id.apply(
+        lambda bucket_name: s3.BucketPolicy(
+            "bucket-policy",
+            bucket=bucket_name,
+            policy_document=create_bucket_policy(bucket_name),
+            opts=ResourceOptions(provider=central_infra_provider),
+        )
+    )
+
+    biotasker_dev_account = AwsAccount(ou=workload_dev_ou, account_name="biotasker-dev")
+
+    # TODO: move these SSM Parameters to the central infra stack
+    biotasker_role_arn = biotasker_dev_account.account.id.apply(
+        lambda x: f"arn:aws:iam::{x}:role/OrganizationAccountAccessRole"
+    )
+    assume_role = ProviderAssumeRoleArgs(role_arn=biotasker_role_arn, session_name="blah")
+    biotasker_provider = Provider(
+        "biotasker-dev",
+        assume_role=assume_role,
+        region="us-east-1",
+        opts=ResourceOptions(
+            parent=biotasker_dev_account,
+        ),
+    )
+    _ = ssm.Parameter(
+        "central-infra-state-bucket-name-in-biotasker-dev",
+        type=ssm.ParameterType.STRING,
+        name="/org-managed/infra-state-bucket-name",
+        # TODO: add tags...for some reason this doesn't use the standard tag format
+        value=central_state_bucket.bucket_name.apply(lambda x: f"{x}"),
+        opts=ResourceOptions(provider=biotasker_provider, parent=biotasker_dev_account),
+    )
+
+    _ = ssm.Parameter(
+        "biotasker-shared-kms-key-arn",
+        type=ssm.ParameterType.STRING,
+        name="/org-managed/infra-state-kms-key-arn",
+        # TODO: add tags...for some reason this doesn't use the standard tag format
+        value=kms_key_arn,
+        opts=ResourceOptions(provider=biotasker_provider, parent=biotasker_dev_account),
     )
 
     # TODO: delegate SSO management https://docs.aws.amazon.com/singlesignon/latest/userguide/delegated-admin-how-to-register.html
@@ -174,7 +289,18 @@ def pulumi_program() -> None:
     )
     _ = AwsSsoPermissionSetAccountAssignments(
         account_id=central_infra_account.account.id,
-        account_name="central-infra-prod",
+        account_name=central_infra_account_name,
         permission_set=admin_permission_set,
         users=["eli.fine"],
+    )
+    _ = AwsSsoPermissionSetAccountAssignments(
+        account_id=biotasker_dev_account.account.id,
+        account_name="biotasker-dev",
+        permission_set=admin_permission_set,
+        users=["eli.fine"],
+    )
+
+    _ = Command(  # I think this needs to be after at least 1 other account is created, but maybe not
+        "enable-aws-service-access",
+        create="aws organizations enable-aws-service-access --service-principal account.amazonaws.com",
     )

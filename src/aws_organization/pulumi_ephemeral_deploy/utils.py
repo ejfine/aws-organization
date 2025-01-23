@@ -185,15 +185,10 @@ def get_config_int(key: str) -> int:
     return int(value)
 
 
-def get_stack(
-    project_name: str,
-    stack_name: str,
-    gitlab_project_name: str,
-    pulumi_program: PulumiFn,
-    stack_config: dict[str, Any],
-) -> Stack:
+def get_stack(*, stack_name: str, pulumi_program: PulumiFn, stack_config: dict[str, Any]) -> Stack:
     env = get_env_from_cli_input(stack_name)
-
+    project_name = stack_config["proj:pulumi_project_name"]
+    github_repo_name = stack_config["proj:github_repo_name"]
     stack_config["proj:env"] = ConfigValue(value=env)
 
     fully_qualified_stack_name = f"{project_name}/{stack_name}"
@@ -224,7 +219,7 @@ def get_stack(
     backend_url = generate_backend_url(
         backend_bucket=backend_bucket,
         aws_account_id=account_id,
-        github_repo_name=gitlab_project_name,
+        github_repo_name=github_repo_name,
         pulumi_project_name=project_name,
     )
 
