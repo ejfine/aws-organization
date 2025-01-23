@@ -143,7 +143,21 @@ def create_bucket_policy(bucket_name: str) -> str:
                         values=[org_id],  # Limit to the AWS Organization
                     ),
                 ],
-            )
+            ),
+            GetPolicyDocumentStatementArgs(
+                effect="Allow",
+                principals=[GetPolicyDocumentStatementPrincipalArgs(type="*", identifiers=["*"])],
+                actions=["s3:ListBucket"],
+                resources=[f"arn:aws:s3:::{bucket_name}"],
+                conditions=[
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="StringEquals", variable="aws:PrincipalOrgID", values=[org_id]
+                    ),
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="StringLike", variable="s3:prefix", values=["${aws:PrincipalAccount}/*"]
+                    ),
+                ],
+            ),
         ]
     ).json
 
