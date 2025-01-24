@@ -135,7 +135,7 @@ def create_bucket_policy(bucket_name: str) -> str:
                     )
                 ],
                 actions=["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
-                resources=[f"arn:aws:s3:::{bucket_name}/*"],
+                resources=[f"arn:aws:s3:::{bucket_name}/${{aws:PrincipalAccount}}/*"],
                 conditions=[
                     GetPolicyDocumentStatementConditionArgs(
                         test="StringEquals",
@@ -253,8 +253,9 @@ def pulumi_program() -> None:
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
     )
 
+    # TODO: create github OIDC for the central infra repo
+
     # TODO: move this bucket policy to the central infra stack
-    # TODO: fix bucket policy to only allow access to objects prefixed with the principal's account ID
     _ = central_state_bucket.id.apply(
         lambda bucket_name: s3.BucketPolicy(
             "bucket-policy",
