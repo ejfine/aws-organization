@@ -76,7 +76,7 @@ jobs:
         with:
           project-dir: ""
           deploy-script-module-name: aws_organization
-          stack-name: production
+          stack-name: prod
           aws-role-name: OrgRootInfraDeploy
           aws-region: us-east-1
           aws-account-id: 789893201852
