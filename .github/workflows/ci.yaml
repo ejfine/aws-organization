@@ -65,6 +65,17 @@ jobs:
             role-to-assume: arn:aws:iam::789893201852:role/OrgRootInfraDeploy
             aws-region: us-east-1
 
+      - name: Preview
+        uses: ./.github/actions/pulumi_ephemeral_deploy
+        with:
+          project-dir: ""
+          deploy-script-package-name: aws-organization
+          stack-name: production
+          aws-role-name: OrgRootInfraDeploy
+          aws-region: us-east-1
+          aws-account-id: 789893201852
+
+
   required-check:
     runs-on: ubuntu-24.04
     needs: [ lint, pulumi-preview ]
