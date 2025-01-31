@@ -1,13 +1,11 @@
 # Changes here will be overwritten by Copier
-_commit: 0c9e6ed
+_commit: 8e4ab30
 _src_path: gh:LabAutomationAndScreening/copier-aws-organization.git
 aws_identity_center_id: d-9067c20053
-aws_management_account_id: '789893201852'
 aws_production_account_id: '789893201852'
 description: Manage my AWS organization
 python_version: 3.12.7
 repo_name: aws-organization
 ssh_port_number: 51446
-use_staging_environment: false
 use_windows_in_ci: false
 
