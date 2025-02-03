@@ -252,6 +252,7 @@ def common_tags(*, name: str = "", git_repository_url: str | None = None) -> dic
         "git-repository-url": git_repository_url,
         "managed-by": "pulumi",
         "stack-name": pulumi.get_stack(),
+        "pulumi-project-name": pulumi.get_project(),
         "Name": name if name != "" else pulumi.get_stack(),
     }
 
