@@ -23,6 +23,8 @@ from .pulumi_ephemeral_deploy.utils import get_config
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_ORG_ACCESS_ROLE_NAME = "OrganizationAccountAccessRole"
+
 
 class AwsSsoPermissionSet(ComponentResource):
     def __init__(
@@ -96,7 +98,11 @@ class AwsSsoPermissionSetAccountAssignments(ComponentResource):
     def lookup_user_id(self, name: str) -> str:
         """Convert a username <first>.<last> name into an AWS SSO User ID."""
         return identitystore_classic.get_user(
-            filter=identitystore_classic.GetUserFilterArgs(attribute_path="UserName", attribute_value=name),
+            alternate_identifier=identitystore_classic.GetUserAlternateIdentifierArgs(
+                unique_attribute=identitystore_classic.GetUserAlternateIdentifierUniqueAttributeArgs(
+                    attribute_path="UserName", attribute_value=name
+                )
+            ),
             identity_store_id=self.identity_store_id,
         ).user_id
 
@@ -115,7 +121,7 @@ class AwsAccount(ComponentResource):
             account_name=account_name,
             email=f"ejfine+{account_name}@gmail.com",
             parent_ids=[ou.id],
-            role_name="OrganizationAccountAccessRole",
+            # Deliberately not setting the role_name here, as it causes problems during any subsequent updates, even when not actually changing the role name. Could possible set up ignore_changes...but just leaving it out for now
             tags=common_tags_native(),
         )
         export(f"{account_name}-account-id", self.account.id)
@@ -212,7 +218,7 @@ def pulumi_program() -> None:
     central_infra_account_name = "central-infra-prod"
     central_infra_account = AwsAccount(ou=central_infra_prod_ou, account_name=central_infra_account_name)
     central_infra_role_arn = central_infra_account.account.id.apply(
-        lambda x: f"arn:aws:iam::{x}:role/OrganizationAccountAccessRole"
+        lambda x: f"arn:aws:iam::{x}:role/{DEFAULT_ORG_ACCESS_ROLE_NAME}"
     )
     assume_role = ProviderAssumeRoleArgs(role_arn=central_infra_role_arn, session_name="blah")
     central_infra_provider = Provider(
@@ -269,7 +275,7 @@ def pulumi_program() -> None:
 
     # TODO: move these SSM Parameters to the central infra stack
     biotasker_role_arn = biotasker_dev_account.account.id.apply(
-        lambda x: f"arn:aws:iam::{x}:role/OrganizationAccountAccessRole"
+        lambda x: f"arn:aws:iam::{x}:role/{DEFAULT_ORG_ACCESS_ROLE_NAME}"
     )
     assume_role = ProviderAssumeRoleArgs(role_arn=biotasker_role_arn, session_name="blah")
     biotasker_provider = Provider(
