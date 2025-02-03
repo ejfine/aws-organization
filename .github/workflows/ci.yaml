@@ -59,12 +59,6 @@ jobs:
         with:
           python-version: 3.12.7
 
-      - name: AWS OIDC
-        uses: aws-actions/configure-aws-credentials@v4.0.2
-        with:
-            role-to-assume: arn:aws:iam::789893201852:role/OrgRootInfraDeploy
-            aws-region: us-east-1
-
       - name: Set up mutex # Github concurrency management is horrible, things get arbitrarily cancelled if queued up. So using mutex until github fixes itself. When multiple jobs are modifying cache at once, weird things can happen.  possible issue is https://github.com/actions/toolkit/issues/658
         uses: ben-z/gh-action-mutex@d3d5b354d460d4b6a1e3ee5b7951678658327812 # v1.0.0-alpha.9
         with:
