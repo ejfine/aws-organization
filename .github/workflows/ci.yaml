@@ -56,7 +56,7 @@ jobs:
       PULUMI_STACK_NAME: prod
       PYTHON_VERSION: 3.12.7
       DEPLOY_SCRIPT_MODULE_NAME: aws_organization
-      AWS_ROLE_NAME: OrgRootInfraPreview
+      PREVIEW_ROLE_NAME: OrgRootInfraPreview
       AWS_ACCOUNT_ID: 789893201852
 
 
