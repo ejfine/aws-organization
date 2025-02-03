@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: a6703ba
+_commit: 171a6bf
 _src_path: gh:LabAutomationAndScreening/copier-aws-organization.git
 aws_identity_center_id: d-9067c20053
 aws_production_account_id: '789893201852'
