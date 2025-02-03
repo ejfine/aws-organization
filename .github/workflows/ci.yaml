@@ -48,32 +48,16 @@ jobs:
         run:  pre-commit run -a
 
   pulumi-preview:
+    uses: ./.github/workflows/pulumi.yml
     needs: [ lint ]
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4.2.2
-
-      - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
-        with:
-          python-version: 3.12.7
-
-      - name: Set up mutex # Github concurrency management is horrible, things get arbitrarily cancelled if queued up. So using mutex until github fixes itself. When multiple jobs are modifying cache at once, weird things can happen.  possible issue is https://github.com/actions/toolkit/issues/658
-        uses: ben-z/gh-action-mutex@d3d5b354d460d4b6a1e3ee5b7951678658327812 # v1.0.0-alpha.9
-        with:
-          branch: mutex-pulumi-prod
-        timeout-minutes: 30 # this is the amount of time this action will wait to attempt to acquire the mutex lock before failing, e.g. if other jobs are queued up in front of it
-
-      - name: Preview
-        uses: ./.github/actions/pulumi_ephemeral_deploy
-        with:
-          project-dir: ""
-          deploy-script-module-name: aws_organization
-          stack-name: prod
-          aws-role-name: OrgRootInfraPreview
-          aws-region: us-east-1
-          aws-account-id: 789893201852
+    with:
+      PULUMI_PLAN: true
+      AWS_REGION: us-east-1
+      PULUMI_STACK_NAME: prod
+      PYTHON_VERSION: 3.12.7
+      DEPLOY_SCRIPT_MODULE_NAME: aws_organization
+      AWS_ROLE_NAME: OrgRootInfraPreview
+      AWS_ACCOUNT_ID: 789893201852
 
 
   required-check:
