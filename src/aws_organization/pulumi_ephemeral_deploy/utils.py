@@ -205,6 +205,7 @@ def get_stack(*, stack_name: str, pulumi_program: PulumiFn, stack_config: dict[s
     backend_bucket_param = ssm_client.get_parameter(Name="/org-managed/infra-state-bucket-name")["Parameter"]
     assert "Value" in backend_bucket_param, f"Expected 'Value' in {backend_bucket_param}"
     backend_bucket = backend_bucket_param["Value"]
+    stack_config["proj:backend_bucket_name"] = ConfigValue(value=backend_bucket)
 
     kms_key_id_param = ssm_client.get_parameter(Name="/org-managed/infra-state-kms-key-arn")["Parameter"]
     assert "Value" in kms_key_id_param, f"Expected 'Value' in {kms_key_id_param}"

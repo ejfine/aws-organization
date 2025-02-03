@@ -302,16 +302,6 @@ def pulumi_program() -> None:
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
     )
 
-    # TODO: move this bucket policy to the central infra stack
-    _ = central_state_bucket.id.apply(
-        lambda bucket_name: s3.BucketPolicy(
-            "bucket-policy",
-            bucket=bucket_name,
-            policy_document=create_bucket_policy(bucket_name),
-            opts=ResourceOptions(provider=central_infra_provider),
-        )
-    )
-
     biotasker_dev_account = AwsAccount(ou=workload_dev_ou, account_name="biotasker-dev")
 
     # TODO: move these SSM Parameters to the central infra stack
