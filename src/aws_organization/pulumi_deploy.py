@@ -17,7 +17,6 @@ def generate_stack_config() -> dict[str, Any]:
     stack_config["proj:github_repo_name"] = github_repo_name
 
     stack_config["proj:git_repository_url"] = ConfigValue(value=f"https://github.com/ejfine/{github_repo_name}")
-    stack_config["proj:org_root_id"] = ConfigValue(value="r-2rsw")
     return stack_config
 
 

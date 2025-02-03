@@ -10,13 +10,17 @@ from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
 from pulumi_aws.iam import get_policy_document
+from pulumi_aws.organizations import get_organization
 from pulumi_aws_native import Provider
 from pulumi_aws_native import ProviderAssumeRoleArgs
+from pulumi_aws_native import iam
 from pulumi_aws_native import organizations
 from pulumi_aws_native import s3
 from pulumi_aws_native import ssm
 from pulumi_command.local import Command
 
+from .constants import CENTRAL_INFRA_GITHUB_ORG_NAME
+from .constants import CENTRAL_INFRA_REPO_NAME
 from .pulumi_ephemeral_deploy.utils import common_tags_native
 from .pulumi_ephemeral_deploy.utils import get_aws_account_id
 from .pulumi_ephemeral_deploy.utils import get_config
@@ -129,7 +133,7 @@ class AwsAccount(ComponentResource):
 
 
 def create_bucket_policy(bucket_name: str) -> str:
-    org_id = "o-2v54b6ap2r"  # TODO: get this programmatically
+    org_id = get_organization().id
     return get_policy_document(
         statements=[
             GetPolicyDocumentStatementArgs(
@@ -177,10 +181,8 @@ def pulumi_program() -> None:
 
     # Create Resources Here
 
-    organization_root_id = get_config("proj:org_root_id")
-    assert isinstance(organization_root_id, str), (
-        f"Expected proj:org_root_id to be a string, got {organization_root_id} of type {type(organization_root_id)}"
-    )
+    organization_root_id = get_organization().roots[0].id
+
     central_infra_ou = organizations.OrganizationalUnit(
         "CentralizedInfrastructure",
         name="CentralizedInfrastructure",
@@ -220,7 +222,7 @@ def pulumi_program() -> None:
     central_infra_role_arn = central_infra_account.account.id.apply(
         lambda x: f"arn:aws:iam::{x}:role/{DEFAULT_ORG_ACCESS_ROLE_NAME}"
     )
-    assume_role = ProviderAssumeRoleArgs(role_arn=central_infra_role_arn, session_name="blah")
+    assume_role = ProviderAssumeRoleArgs(role_arn=central_infra_role_arn, session_name="pulumi")
     central_infra_provider = Provider(
         f"{central_infra_account_name}",
         assume_role=assume_role,
@@ -260,6 +262,45 @@ def pulumi_program() -> None:
     )
 
     # TODO: create github OIDC for the central infra repo
+    central_infra_repo_oidc = iam.OidcProvider(
+        "central-infra-repo-github-oidc-provider",
+        url="https://token.actions.githubusercontent.com",
+        client_id_list=["sts.amazonaws.com"],
+        thumbprint_list=["6938fd4d98bab03faadb97b34396831e3780aea1"],  # GitHub's root CA thumbprint
+        tags=common_tags_native(),
+        opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
+    )
+    assume_role_policy_doc = central_infra_repo_oidc.arn.apply(
+        lambda oidc_provider_arn: get_policy_document(
+            statements=[
+                GetPolicyDocumentStatementArgs(
+                    effect="Allow",
+                    principals=[
+                        GetPolicyDocumentStatementPrincipalArgs(type="Federated", identifiers=[oidc_provider_arn])
+                    ],
+                    actions=["sts:AssumeRoleWithWebIdentity"],
+                    conditions=[
+                        GetPolicyDocumentStatementConditionArgs(
+                            test="StringEquals",
+                            variable="token.actions.githubusercontent.com:sub",
+                            values=[
+                                f"repo:{CENTRAL_INFRA_GITHUB_ORG_NAME}/{CENTRAL_INFRA_REPO_NAME}:ref:refs/heads/initial-steps"
+                            ],
+                        ),
+                    ],
+                )
+            ]
+        )
+    )
+
+    _ = iam.Role(
+        "central-infra-repo-deploy",
+        role_name=f"InfraDeploy--{CENTRAL_INFRA_REPO_NAME}",
+        assume_role_policy_document=assume_role_policy_doc.json,
+        managed_policy_arns=["arn:aws:iam::aws:policy/AdministratorAccess"],
+        tags=common_tags_native(),
+        opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
+    )
 
     # TODO: move this bucket policy to the central infra stack
     _ = central_state_bucket.id.apply(
