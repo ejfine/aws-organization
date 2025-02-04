@@ -9,17 +9,20 @@ from ephemeral_pulumi_deploy.utils import common_tags
 from ephemeral_pulumi_deploy.utils import common_tags_native
 from pulumi import ComponentResource
 from pulumi import Output
+from pulumi import Resource
 from pulumi import ResourceOptions
+from pulumi import dynamic
 from pulumi import export
 from pulumi.dynamic import CreateResult
-from pulumi.dynamic import Resource
-from pulumi.dynamic import ResourceProvider
 from pulumi_aws import identitystore as identitystore_classic
 from pulumi_aws import ssoadmin
+from pulumi_aws.iam import GetPolicyDocumentResult
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
 from pulumi_aws.iam import get_policy_document
+from pulumi_aws.organizations import DelegatedAdministrator
+from pulumi_aws.organizations import DelegatedAdministratorArgs
 from pulumi_aws.organizations import get_organization
 from pulumi_aws_native import Provider
 from pulumi_aws_native import ProviderAssumeRoleArgs
@@ -40,7 +43,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_ORG_ACCESS_ROLE_NAME = "OrganizationAccountAccessRole"
 
 
-class SleepProvider(ResourceProvider):
+class SleepProvider(dynamic.ResourceProvider):
     @override
     def create(self, props: dict[str, Any]) -> CreateResult:
         duration = props["seconds"]
@@ -48,9 +51,9 @@ class SleepProvider(ResourceProvider):
         return CreateResult(id_="sleep-done", outs={})
 
 
-class Sleep(Resource):
+class Sleep(dynamic.Resource):
     def __init__(self, name: str, seconds: float, opts: ResourceOptions | None = None):
-        super().__init__(SleepProvider(), name, {"seconds": seconds}, opts)
+        super().__init__(SleepProvider(), name, props={"seconds": seconds}, opts=opts)
 
 
 class AwsSsoPermissionSet(ComponentResource):
@@ -135,13 +138,8 @@ class AwsSsoPermissionSetAccountAssignments(ComponentResource):
 
 
 class AwsAccount(ComponentResource):
-    def __init__(
-        self,
-        *,
-        account_name: str,
-        ou: organizations.OrganizationalUnit,
-    ):
-        super().__init__("labauto:aws-organization:AwsAccount", account_name, None)
+    def __init__(self, *, account_name: str, ou: organizations.OrganizationalUnit, parent: Resource | None = None):
+        super().__init__("labauto:aws-organization:AwsAccount", account_name, None, opts=ResourceOptions(parent=parent))
         self.account = organizations.Account(
             account_name,
             opts=ResourceOptions(parent=self),
@@ -160,6 +158,102 @@ class AwsAccount(ComponentResource):
 
         export(f"{account_name}-account-id", self.account.id)
         export(f"{account_name}-role-name", self.account.role_name)
+
+
+class AwsWorkload(ComponentResource):
+    def __init__(  # noqa: PLR0913 # yes, this is a lot of arguments, but they're all kwargs
+        self,
+        *,
+        workload_name: str,
+        prod_ou: organizations.OrganizationalUnit,
+        prod_account_name_suffixes: list[str],
+        central_infra_account: AwsAccount,
+        deploy_in_workload_account_assume_role_policy: Output[GetPolicyDocumentResult],
+        preview_in_workload_account_assume_role_policy: Output[GetPolicyDocumentResult],
+        kms_key_arn: str,
+        central_infra_provider: Provider,
+    ):
+        super().__init__("labauto:aws-organization:AwsWorkload", workload_name, None)
+        assert len(prod_account_name_suffixes) == 1, (
+            f"Only a single prod account name suffix is supported currently, not {len(prod_account_name_suffixes)}"
+        )
+        self.prod_accounts: list[AwsAccount] = []
+        for account_name_suffix in prod_account_name_suffixes:
+            account_name = f"{workload_name}-{account_name_suffix}"
+            account_resource = AwsAccount(account_name=account_name, ou=prod_ou, parent=self)
+            self.prod_accounts.append(account_resource)
+            provider_role_arn = account_resource.account.id.apply(
+                lambda x: f"arn:aws:iam::{x}:role/{DEFAULT_ORG_ACCESS_ROLE_NAME}"
+            )
+            assume_role = ProviderAssumeRoleArgs(role_arn=provider_role_arn, session_name="pulumi")
+            account_provider = Provider(
+                account_name,
+                assume_role=assume_role,
+                region="us-east-1",
+                opts=ResourceOptions(parent=account_resource, depends_on=[account_resource.wait_after_account_create]),
+            )
+            _ = iam.Role(
+                f"central-infra-repo-deploy-in-{account_name}",
+                role_name=f"InfraDeploy--{CENTRAL_INFRA_REPO_NAME}",
+                assume_role_policy_document=deploy_in_workload_account_assume_role_policy.json,
+                managed_policy_arns=["arn:aws:iam::aws:policy/AdministratorAccess"],
+                tags=common_tags_native(),
+                opts=ResourceOptions(provider=account_provider, parent=account_resource),
+            )
+            _ = iam.Role(
+                f"central-infra-repo-preview-in-{account_name}",
+                role_name=f"InfraPreview--{CENTRAL_INFRA_REPO_NAME}",
+                assume_role_policy_document=preview_in_workload_account_assume_role_policy.json,
+                managed_policy_arns=["arn:aws:iam::aws:policy/ReadOnlyAccess"],
+                policies=[
+                    iam.RolePolicyArgs(
+                        policy_name="InfraKmsDecrypt",
+                        policy_document=get_policy_document(
+                            statements=[
+                                GetPolicyDocumentStatementArgs(
+                                    effect="Allow",
+                                    actions=[
+                                        "kms:Decrypt",
+                                        "kms:Encrypt",  # unclear why Encrypt is required to run a Preview...but Pulumi gives an error if it's not included
+                                    ],
+                                    resources=[kms_key_arn],
+                                )
+                            ]
+                        ).json,
+                    )
+                ],
+                tags=common_tags_native(),
+                opts=ResourceOptions(provider=account_provider, parent=account_resource),
+            )
+
+        prod_account_data = [account.account_info_kwargs for account in self.prod_accounts]
+        all_prod_accounts_resolved = Output.all(
+            *[
+                Output.all(account["id"], account["name"]).apply(lambda vals: {"id": vals[0], "name": vals[1]})
+                for account in prod_account_data
+            ]
+        )
+
+        def build_workload(resolved_prod_accounts: list[dict[str, str]]) -> str:
+            # Convert resolved dicts to Pydantic AwsAccountInfo models
+            prod_accounts_info = [AwsAccountInfo(**acc) for acc in resolved_prod_accounts]
+
+            logical_workload = AwsLogicalWorkload(
+                name=workload_name,
+                prod_accounts=prod_accounts_info,  # Insert all resolved dev accounts
+            )
+
+            return logical_workload.model_dump_json()
+
+        _ = ssm.Parameter(
+            f"{workload_name}-workload-info-for-central-infra",
+            type=ssm.ParameterType.STRING,
+            name=f"{WORKLOAD_INFO_SSM_PARAM_PREFIX}/{workload_name}",
+            description="Hold the logical workload information so that Central Infra account can deploy various resources within them.",
+            tags=common_tags(),
+            value=all_prod_accounts_resolved.apply(build_workload),
+            opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
+        )
 
 
 def pulumi_program() -> None:
@@ -209,6 +303,13 @@ def pulumi_program() -> None:
     )
     central_infra_account_name = "central-infra-prod"
     central_infra_account = AwsAccount(ou=central_infra_prod_ou, account_name=central_infra_account_name)
+    enable_service_access = (
+        Command(  # I think this needs to be after at least 1 other account is created, but maybe not
+            "enable-aws-service-access",
+            create="aws organizations enable-aws-service-access --service-principal account.amazonaws.com",
+            opts=ResourceOptions(depends_on=central_infra_account.wait_after_account_create),
+        )
+    )
     central_infra_role_arn = central_infra_account.account.id.apply(
         lambda x: f"arn:aws:iam::{x}:role/{DEFAULT_ORG_ACCESS_ROLE_NAME}"
     )
@@ -493,7 +594,30 @@ def pulumi_program() -> None:
         opts=ResourceOptions(provider=biotasker_provider, parent=biotasker_dev_account),
     )
 
-    # TODO: move these SSM Parameters to the central infra stack
+    identity_center_delegate_workload = AwsWorkload(
+        workload_name="identity-center",
+        prod_ou=central_infra_prod_ou,
+        prod_account_name_suffixes=["prod"],
+        central_infra_account=central_infra_account,
+        deploy_in_workload_account_assume_role_policy=deploy_in_workload_account_assume_role_policy,
+        preview_in_workload_account_assume_role_policy=preview_in_workload_account_assume_role_policy,
+        kms_key_arn=kms_key_arn,
+        central_infra_provider=central_infra_provider,
+    )
+    _ = DelegatedAdministrator(
+        "delegate-admin-to-identity-center-prod",
+        DelegatedAdministratorArgs(
+            account_id=identity_center_delegate_workload.prod_accounts[0].account.id,
+            service_principal="sso.amazonaws.com",
+        ),
+        opts=ResourceOptions(
+            parent=identity_center_delegate_workload.prod_accounts[0],
+            depends_on=[
+                identity_center_delegate_workload.prod_accounts[0].wait_after_account_create,
+                enable_service_access,
+            ],
+        ),
+    )
 
     # TODO: delegate SSO management https://docs.aws.amazon.com/singlesignon/latest/userguide/delegated-admin-how-to-register.html
     admin_permission_set = AwsSsoPermissionSet(
@@ -511,8 +635,11 @@ def pulumi_program() -> None:
         permission_set=admin_permission_set,
         users=["eli.fine"],
     )
-
-    _ = Command(  # I think this needs to be after at least 1 other account is created, but maybe not
-        "enable-aws-service-access",
-        create="aws organizations enable-aws-service-access --service-principal account.amazonaws.com",
+    _ = identity_center_delegate_workload.prod_accounts[0].account.account_name.apply(
+        lambda account_name: AwsSsoPermissionSetAccountAssignments(
+            account_id=identity_center_delegate_workload.prod_accounts[0].account.id,
+            account_name=account_name,
+            permission_set=admin_permission_set,
+            users=["eli.fine"],
+        )
     )
