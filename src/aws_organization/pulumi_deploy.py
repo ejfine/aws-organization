@@ -1,10 +1,10 @@
 import logging
 from typing import Any
 
+from ephemeral_pulumi_deploy import run_cli
 from pulumi.automation import ConfigValue
 
 from .program import pulumi_program
-from .pulumi_ephemeral_deploy.cli import run_cli
 
 logger = logging.getLogger(__name__)
 
