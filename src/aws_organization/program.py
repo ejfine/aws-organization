@@ -1,9 +1,15 @@
 import logging
+import time
+from typing import Any
+from typing import override
 
 from pulumi import ComponentResource
 from pulumi import Output
 from pulumi import ResourceOptions
 from pulumi import export
+from pulumi.dynamic import CreateResult
+from pulumi.dynamic import Resource
+from pulumi.dynamic import ResourceProvider
 from pulumi_aws import identitystore as identitystore_classic
 from pulumi_aws import ssoadmin
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
@@ -28,6 +34,19 @@ from .pulumi_ephemeral_deploy.utils import get_config
 logger = logging.getLogger(__name__)
 
 DEFAULT_ORG_ACCESS_ROLE_NAME = "OrganizationAccountAccessRole"
+
+
+class SleepProvider(ResourceProvider):
+    @override
+    def create(self, props: dict[str, Any]) -> CreateResult:
+        duration = props["seconds"]
+        time.sleep(duration)
+        return CreateResult(id_="sleep-done", outs={})
+
+
+class Sleep(Resource):
+    def __init__(self, name: str, seconds: float, opts: ResourceOptions | None = None):
+        super().__init__(SleepProvider(), name, {"seconds": seconds}, opts)
 
 
 class AwsSsoPermissionSet(ComponentResource):
@@ -128,6 +147,12 @@ class AwsAccount(ComponentResource):
             # Deliberately not setting the role_name here, as it causes problems during any subsequent updates, even when not actually changing the role name. Could possible set up ignore_changes...but just leaving it out for now
             tags=common_tags_native(),
         )
+        self.wait_after_account_create = Sleep(
+            f"wait-after-account-create-{account_name}",
+            60,
+            opts=ResourceOptions(parent=self, depends_on=[self.account]),
+        )
+
         export(f"{account_name}-account-id", self.account.id)
         export(f"{account_name}-role-name", self.account.role_name)
 
@@ -262,7 +287,7 @@ def pulumi_program() -> None:
     )
 
     # TODO: create github OIDC for the central infra repo
-    central_infra_repo_oidc = iam.OidcProvider(
+    central_infra_prod_github_oidc = iam.OidcProvider(
         "central-infra-repo-github-oidc-provider",
         url="https://token.actions.githubusercontent.com",
         client_id_list=["sts.amazonaws.com"],
@@ -270,7 +295,34 @@ def pulumi_program() -> None:
         tags=common_tags_native(),
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
     )
-    assume_role_policy_doc = central_infra_repo_oidc.arn.apply(
+    preview_assume_role_policy_doc = central_infra_prod_github_oidc.arn.apply(
+        lambda oidc_provider_arn: get_policy_document(
+            statements=[
+                GetPolicyDocumentStatementArgs(
+                    effect="Allow",
+                    principals=[
+                        GetPolicyDocumentStatementPrincipalArgs(type="Federated", identifiers=[oidc_provider_arn])
+                    ],
+                    actions=["sts:AssumeRoleWithWebIdentity"],
+                    conditions=[
+                        GetPolicyDocumentStatementConditionArgs(
+                            test="StringLike",
+                            variable="token.actions.githubusercontent.com:sub",
+                            values=[
+                                f"repo:{CENTRAL_INFRA_GITHUB_ORG_NAME}/{CENTRAL_INFRA_REPO_NAME}:*"  # ref:refs/heads/initial-steps"
+                            ],
+                        ),
+                        GetPolicyDocumentStatementConditionArgs(
+                            test="StringEquals",
+                            variable="token.actions.githubusercontent.com:aud",
+                            values=["sts.amazonaws.com"],
+                        ),
+                    ],
+                )
+            ]
+        )
+    )
+    deploy_assume_role_policy_doc = central_infra_prod_github_oidc.arn.apply(
         lambda oidc_provider_arn: get_policy_document(
             statements=[
                 GetPolicyDocumentStatementArgs(
@@ -284,8 +336,13 @@ def pulumi_program() -> None:
                             test="StringEquals",
                             variable="token.actions.githubusercontent.com:sub",
                             values=[
-                                f"repo:{CENTRAL_INFRA_GITHUB_ORG_NAME}/{CENTRAL_INFRA_REPO_NAME}:ref:refs/heads/initial-steps"
+                                f"repo:{CENTRAL_INFRA_GITHUB_ORG_NAME}/{CENTRAL_INFRA_REPO_NAME}:ref:refs/heads/main"
                             ],
+                        ),
+                        GetPolicyDocumentStatementConditionArgs(
+                            test="StringEquals",
+                            variable="token.actions.githubusercontent.com:aud",
+                            values=["sts.amazonaws.com"],
                         ),
                     ],
                 )
@@ -296,8 +353,16 @@ def pulumi_program() -> None:
     _ = iam.Role(
         "central-infra-repo-deploy",
         role_name=f"InfraDeploy--{CENTRAL_INFRA_REPO_NAME}",
-        assume_role_policy_document=assume_role_policy_doc.json,
+        assume_role_policy_document=deploy_assume_role_policy_doc.json,
         managed_policy_arns=["arn:aws:iam::aws:policy/AdministratorAccess"],
+        tags=common_tags_native(),
+        opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
+    )
+    _ = iam.Role(
+        "central-infra-repo-preview",
+        role_name=f"InfraPreview--{CENTRAL_INFRA_REPO_NAME}",
+        assume_role_policy_document=preview_assume_role_policy_doc.json,
+        managed_policy_arns=["arn:aws:iam::aws:policy/ReadOnlyAccess"],
         tags=common_tags_native(),
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
     )
