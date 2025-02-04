@@ -57,7 +57,7 @@ jobs:
       PYTHON_VERSION: 3.12.7
       DEPLOY_SCRIPT_MODULE_NAME: aws_organization
       PREVIEW_ROLE_NAME: OrgRootInfraPreview
-      AWS_ACCOUNT_ID: 789893201852
+      AWS_ACCOUNT_ID: "789893201852"
 
 
   required-check:

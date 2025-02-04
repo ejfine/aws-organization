@@ -1,8 +1,10 @@
 # Changes here will be overwritten by Copier
-_commit: af30554
+_commit: 08d1fc9
 _src_path: gh:LabAutomationAndScreening/copier-aws-organization.git
 aws_identity_center_id: d-9067c20053
 aws_production_account_id: '789893201852'
+central_infra_github_organization_name: ejfine
+central_infra_repo_name: aws-central-infrastructure
 description: Manage my AWS organization
 pulumi_stack_name: prod
 python_version: 3.12.7
