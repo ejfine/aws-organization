@@ -19,6 +19,7 @@ dependencies = [
     "pulumi-aws>=6.66.3",
     "pulumi-aws-native>=1.24.0",
     "pulumi-command>=1.0.1",
+    "ephemeral-pulumi-deploy>=0.0.1",
     "boto3>=1.36.3",
     "boto3-stubs[all]>=1.36.3",
 ]

@@ -26,6 +26,7 @@ source = { editable = "." }
 dependencies = [
     { name = "boto3" },
     { name = "boto3-stubs", extra = ["all"] },
+    { name = "ephemeral-pulumi-deploy" },
     { name = "pulumi" },
     { name = "pulumi-aws" },
     { name = "pulumi-aws-native" },
@@ -40,6 +41,7 @@ dependencies = [
 requires-dist = [
     { name = "boto3", specifier = ">=1.36.3" },
     { name = "boto3-stubs", extras = ["all"], specifier = ">=1.36.3" },
+    { name = "ephemeral-pulumi-deploy", specifier = ">=0.0.1" },
     { name = "pulumi", specifier = ">=3.147.0" },
     { name = "pulumi-aws", specifier = ">=6.66.3" },
     { name = "pulumi-aws-native", specifier = ">=1.24.0" },
@@ -581,6 +583,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/70/43/86fe3f9e130c4137b0f1b50784dd70a5087b911fe07fa81e53e0c4c47fea/dill-0.3.9.tar.gz", hash = "sha256:81aa267dddf68cbfe8029c42ca9ec6a4ab3b22371d1c450abc54422577b4512c", size = 187000 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/46/d1/e73b6ad76f0b1fb7f23c35c6d95dbc506a9c8804f43dda8cb5b0fa6331fd/dill-0.3.9-py3-none-any.whl", hash = "sha256:468dff3b89520b474c0397703366b7b95eebe6303f108adf9b19da1f702be87a", size = 119418 },
+]
+
+[[package]]
+name = "ephemeral-pulumi-deploy"
+version = "0.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "boto3" },
+    { name = "pulumi" },
+    { name = "pulumi-aws" },
+    { name = "pulumi-aws-native" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ad/38/8572ebbc713516a0b88c0a12af791452fb35216797ebd327206464c528ec/ephemeral_pulumi_deploy-0.0.1.tar.gz", hash = "sha256:968d08d9771526047ae9445ccf81118b5fa2672563a05c934c5deda6abfa933e", size = 8696 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/56/b5/06839ae92b714b7429e5572268509663241b024a70c3daf57b546d9ddfee/ephemeral_pulumi_deploy-0.0.1-py3-none-any.whl", hash = "sha256:636fa8fa75045a0a864f54c367bfc6c6f881361470a3b776ca61246073874929", size = 7712 },
 ]
 
 [[package]]
