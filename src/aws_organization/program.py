@@ -157,46 +157,6 @@ class AwsAccount(ComponentResource):
         export(f"{account_name}-role-name", self.account.role_name)
 
 
-def create_bucket_policy(bucket_name: str) -> str:
-    org_id = get_organization().id
-    return get_policy_document(
-        statements=[
-            GetPolicyDocumentStatementArgs(
-                effect="Allow",
-                principals=[
-                    GetPolicyDocumentStatementPrincipalArgs(
-                        type="*",
-                        identifiers=["*"],  # Allows all principals
-                    )
-                ],
-                actions=["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
-                resources=[f"arn:aws:s3:::{bucket_name}/${{aws:PrincipalAccount}}/*"],
-                conditions=[
-                    GetPolicyDocumentStatementConditionArgs(
-                        test="StringEquals",
-                        variable="aws:PrincipalOrgID",
-                        values=[org_id],  # Limit to the AWS Organization
-                    ),
-                ],
-            ),
-            GetPolicyDocumentStatementArgs(
-                effect="Allow",
-                principals=[GetPolicyDocumentStatementPrincipalArgs(type="*", identifiers=["*"])],
-                actions=["s3:ListBucket"],
-                resources=[f"arn:aws:s3:::{bucket_name}"],
-                conditions=[
-                    GetPolicyDocumentStatementConditionArgs(
-                        test="StringEquals", variable="aws:PrincipalOrgID", values=[org_id]
-                    ),
-                    GetPolicyDocumentStatementConditionArgs(
-                        test="StringLike", variable="s3:prefix", values=["${aws:PrincipalAccount}/*"]
-                    ),
-                ],
-            ),
-        ]
-    ).json
-
-
 def pulumi_program() -> None:
     """Execute creating the stack."""
     aws_account_id = get_aws_account_id()
@@ -363,6 +323,23 @@ def pulumi_program() -> None:
         role_name=f"InfraPreview--{CENTRAL_INFRA_REPO_NAME}",
         assume_role_policy_document=preview_assume_role_policy_doc.json,
         managed_policy_arns=["arn:aws:iam::aws:policy/ReadOnlyAccess"],
+        policies=[
+            iam.RolePolicyArgs(
+                policy_name="InfraKmsDecrypt",
+                policy_document=get_policy_document(
+                    statements=[
+                        GetPolicyDocumentStatementArgs(
+                            effect="Allow",
+                            actions=[
+                                "kms:Decrypt",
+                                "kms:Encrypt",  # unclear why Encrypt is required to run a Preview...but Pulumi gives an error if it's not included
+                            ],
+                            resources=[kms_key_arn],
+                        )
+                    ]
+                ).json,
+            )
+        ],
         tags=common_tags_native(),
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
     )
