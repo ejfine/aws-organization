@@ -5,6 +5,7 @@ from typing import override
 
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
+from ephemeral_pulumi_deploy.utils import common_tags
 from ephemeral_pulumi_deploy.utils import common_tags_native
 from pulumi import ComponentResource
 from pulumi import Output
@@ -30,6 +31,9 @@ from pulumi_command.local import Command
 
 from .constants import CENTRAL_INFRA_GITHUB_ORG_NAME
 from .constants import CENTRAL_INFRA_REPO_NAME
+from .lib import WORKLOAD_INFO_SSM_PARAM_PREFIX
+from .lib import AwsAccountInfo
+from .lib import AwsLogicalWorkload
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +156,7 @@ class AwsAccount(ComponentResource):
             60,
             opts=ResourceOptions(parent=self, depends_on=[self.account]),
         )
+        self.account_info_kwargs = self.account.id.apply(lambda account_id: {"id": account_id, "name": account_name})
 
         export(f"{account_name}-account-id", self.account.id)
         export(f"{account_name}-role-name", self.account.role_name)
@@ -229,7 +234,7 @@ def pulumi_program() -> None:
         "central-infra-state-bucket-name",
         type=ssm.ParameterType.STRING,
         name="/org-managed/infra-state-bucket-name",
-        # TODO: add tags...for some reason this doesn't use the standard tag format
+        tags=common_tags(),
         value=central_state_bucket.bucket_name.apply(lambda x: f"{x}"),
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
     )
@@ -241,7 +246,7 @@ def pulumi_program() -> None:
         "central-infra-shared-kms-key-arn",
         type=ssm.ParameterType.STRING,
         name="/org-managed/infra-state-kms-key-arn",
-        # TODO: add tags...for some reason this doesn't use the standard tag format
+        tags=common_tags(),
         value=kms_key_arn,
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
     )
@@ -310,7 +315,7 @@ def pulumi_program() -> None:
         )
     )
 
-    _ = iam.Role(
+    central_infra_deploy_role = iam.Role(
         "central-infra-repo-deploy",
         role_name=f"InfraDeploy--{CENTRAL_INFRA_REPO_NAME}",
         assume_role_policy_document=deploy_assume_role_policy_doc.json,
@@ -318,7 +323,41 @@ def pulumi_program() -> None:
         tags=common_tags_native(),
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
     )
-    _ = iam.Role(
+    deploy_in_workload_account_assume_role_policy = central_infra_deploy_role.arn.apply(
+        lambda arn: get_policy_document(
+            statements=[
+                GetPolicyDocumentStatementArgs(
+                    effect="Allow",
+                    actions=["sts:AssumeRole"],
+                    principals=[
+                        GetPolicyDocumentStatementPrincipalArgs(
+                            type="AWS",
+                            identifiers=[arn],
+                        )
+                    ],
+                )
+            ]
+        )
+    )
+    # TODO: lock this back down
+    deploy_in_workload_account_assume_role_policy = central_infra_account.account.id.apply(
+        lambda id: get_policy_document(
+            statements=[
+                GetPolicyDocumentStatementArgs(
+                    effect="Allow",
+                    actions=["sts:AssumeRole"],
+                    principals=[
+                        GetPolicyDocumentStatementPrincipalArgs(
+                            type="AWS",
+                            identifiers=[f"arn:aws:iam::{id}:root"],
+                        )
+                    ],
+                )
+            ]
+        )
+    )
+
+    central_infra_preview_role = iam.Role(
         "central-infra-repo-preview",
         role_name=f"InfraPreview--{CENTRAL_INFRA_REPO_NAME}",
         assume_role_policy_document=preview_assume_role_policy_doc.json,
@@ -343,10 +382,71 @@ def pulumi_program() -> None:
         tags=common_tags_native(),
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
     )
+    preview_in_workload_account_assume_role_policy = central_infra_preview_role.arn.apply(
+        lambda arn: get_policy_document(
+            statements=[
+                GetPolicyDocumentStatementArgs(
+                    effect="Allow",
+                    actions=["sts:AssumeRole"],
+                    principals=[
+                        GetPolicyDocumentStatementPrincipalArgs(
+                            type="AWS",
+                            identifiers=[arn],
+                        )
+                    ],
+                )
+            ]
+        )
+    )
+    # TODO: lock this back down to just the central_infra_preview_role
+    preview_in_workload_account_assume_role_policy = central_infra_account.account.id.apply(
+        lambda id: get_policy_document(
+            statements=[
+                GetPolicyDocumentStatementArgs(
+                    effect="Allow",
+                    actions=["sts:AssumeRole"],
+                    principals=[
+                        GetPolicyDocumentStatementPrincipalArgs(
+                            type="AWS",
+                            identifiers=[f"arn:aws:iam::{id}:root"],
+                        )
+                    ],
+                )
+            ]
+        )
+    )
 
     biotasker_dev_account = AwsAccount(ou=workload_dev_ou, account_name="biotasker-dev")
 
-    # TODO: move these SSM Parameters to the central infra stack
+    dev_account_data = [biotasker_dev_account.account_info_kwargs]
+    all_dev_accounts_resolved = Output.all(
+        *[
+            Output.all(account["id"], account["name"]).apply(lambda vals: {"id": vals[0], "name": vals[1]})
+            for account in dev_account_data
+        ]
+    )
+
+    def build_workload(resolved_accounts: list[dict[str, str]]) -> str:
+        # Convert resolved dicts to Pydantic AwsAccountInfo models
+        dev_accounts = [AwsAccountInfo(**acc) for acc in resolved_accounts]
+
+        logical_workload = AwsLogicalWorkload(
+            name="biotasker",
+            dev_accounts=dev_accounts,  # Insert all resolved dev accounts
+        )
+
+        return logical_workload.model_dump_json()
+
+    workload_name = "biotasker"
+    _ = ssm.Parameter(
+        f"{workload_name}-workload-info-for-central-infra",
+        type=ssm.ParameterType.STRING,
+        name=f"{WORKLOAD_INFO_SSM_PARAM_PREFIX}/{workload_name}",
+        description="Hold the logical workload information so that Central Infra account can deploy various resources within them.",
+        tags=common_tags(),
+        value=all_dev_accounts_resolved.apply(build_workload),
+        opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
+    )
     biotasker_role_arn = biotasker_dev_account.account.id.apply(
         lambda x: f"arn:aws:iam::{x}:role/{DEFAULT_ORG_ACCESS_ROLE_NAME}"
     )
@@ -359,23 +459,41 @@ def pulumi_program() -> None:
             parent=biotasker_dev_account,
         ),
     )
-    _ = ssm.Parameter(
-        "central-infra-state-bucket-name-in-biotasker-dev",
-        type=ssm.ParameterType.STRING,
-        name="/org-managed/infra-state-bucket-name",
-        # TODO: add tags...for some reason this doesn't use the standard tag format
-        value=central_state_bucket.bucket_name.apply(lambda x: f"{x}"),
+    _ = iam.Role(
+        f"central-infra-repo-deploy-in-{workload_name}",
+        role_name=f"InfraDeploy--{CENTRAL_INFRA_REPO_NAME}",
+        assume_role_policy_document=deploy_in_workload_account_assume_role_policy.json,
+        managed_policy_arns=["arn:aws:iam::aws:policy/AdministratorAccess"],
+        tags=common_tags_native(),
+        opts=ResourceOptions(provider=biotasker_provider, parent=biotasker_dev_account),
+    )
+    _ = iam.Role(
+        f"central-infra-repo-preview-in-{workload_name}",
+        role_name=f"InfraPreview--{CENTRAL_INFRA_REPO_NAME}",
+        assume_role_policy_document=preview_in_workload_account_assume_role_policy.json,
+        managed_policy_arns=["arn:aws:iam::aws:policy/ReadOnlyAccess"],
+        policies=[
+            iam.RolePolicyArgs(
+                policy_name="InfraKmsDecrypt",
+                policy_document=get_policy_document(
+                    statements=[
+                        GetPolicyDocumentStatementArgs(
+                            effect="Allow",
+                            actions=[
+                                "kms:Decrypt",
+                                "kms:Encrypt",  # unclear why Encrypt is required to run a Preview...but Pulumi gives an error if it's not included
+                            ],
+                            resources=[kms_key_arn],
+                        )
+                    ]
+                ).json,
+            )
+        ],
+        tags=common_tags_native(),
         opts=ResourceOptions(provider=biotasker_provider, parent=biotasker_dev_account),
     )
 
-    _ = ssm.Parameter(
-        "biotasker-shared-kms-key-arn",
-        type=ssm.ParameterType.STRING,
-        name="/org-managed/infra-state-kms-key-arn",
-        # TODO: add tags...for some reason this doesn't use the standard tag format
-        value=kms_key_arn,
-        opts=ResourceOptions(provider=biotasker_provider, parent=biotasker_dev_account),
-    )
+    # TODO: move these SSM Parameters to the central infra stack
 
     # TODO: delegate SSO management https://docs.aws.amazon.com/singlesignon/latest/userguide/delegated-admin-how-to-register.html
     admin_permission_set = AwsSsoPermissionSet(
