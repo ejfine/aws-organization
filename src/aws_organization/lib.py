@@ -1,24 +1,26 @@
+"""Information in here is also used in the Central Infrastructure Account."""
+
 from pydantic import BaseModel
 from pydantic import Field
 
+WORKLOAD_INFO_SSM_PARAM_PREFIX = "/org-managed/logical-workloads"
+
 
 class AwsAccountInfo(BaseModel, frozen=True):
-    account_id: str
-    account_name: str
-
-
-class AwsLogicalWorkload(BaseModel, frozen=True):
+    version: str = "0.0.1"
+    id: str
     name: str
-    production_accounts: list[AwsAccountInfo] = Field(
+
+
+class AwsLogicalWorkload(BaseModel):
+    version: str = "0.0.1"
+    name: str
+    prod_accounts: list[AwsAccountInfo] = Field(
         default_factory=list
     )  # TODO: convert to a set with deterministic ordering to avoid false positive diffs
     staging_accounts: list[AwsAccountInfo] = Field(
         default_factory=list
     )  # TODO: convert to a set with deterministic ordering to avoid false positive diffs
-    development_accounts: list[AwsAccountInfo] = Field(
+    dev_accounts: list[AwsAccountInfo] = Field(
         default_factory=list
     )  # TODO: convert to a set with deterministic ordering to avoid false positive diffs
-
-
-class AwsLogicalWorkloads(BaseModel, frozen=True):
-    logical_workloads: list[AwsLogicalWorkload]
