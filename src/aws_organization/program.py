@@ -1,21 +1,13 @@
 import logging
-import time
-from typing import Any
-from typing import override
+from typing import TypedDict
 
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
 from ephemeral_pulumi_deploy.utils import common_tags
 from ephemeral_pulumi_deploy.utils import common_tags_native
-from pulumi import ComponentResource
 from pulumi import Output
-from pulumi import Resource
 from pulumi import ResourceOptions
-from pulumi import dynamic
 from pulumi import export
-from pulumi.dynamic import CreateResult
-from pulumi_aws import identitystore as identitystore_classic
-from pulumi_aws import ssoadmin
 from pulumi_aws.iam import GetPolicyDocumentResult
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
@@ -34,229 +26,25 @@ from pulumi_command.local import Command
 
 from .constants import CENTRAL_INFRA_GITHUB_ORG_NAME
 from .constants import CENTRAL_INFRA_REPO_NAME
-from .lib import WORKLOAD_INFO_SSM_PARAM_PREFIX
-from .lib import AwsAccountInfo
-from .lib import AwsLogicalWorkload
+from .lib import DEFAULT_ORG_ACCESS_ROLE_NAME
+from .lib import AwsAccount
+from .lib import AwsWorkload
+from .shared_lib import WORKLOAD_INFO_SSM_PARAM_PREFIX
+from .shared_lib import AwsAccountInfo
+from .shared_lib import AwsLogicalWorkload
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_ORG_ACCESS_ROLE_NAME = "OrganizationAccountAccessRole"
+
+class CommonWorkloadKwargs(TypedDict):
+    central_infra_account: AwsAccount
+    deploy_in_workload_account_assume_role_policy: Output[GetPolicyDocumentResult]
+    preview_in_workload_account_assume_role_policy: Output[GetPolicyDocumentResult]
+    kms_key_arn: str
+    central_infra_provider: Provider
 
 
-class SleepProvider(dynamic.ResourceProvider):
-    @override
-    def create(self, props: dict[str, Any]) -> CreateResult:
-        duration = props["seconds"]
-        time.sleep(duration)
-        return CreateResult(id_="sleep-done", outs={})
-
-
-class Sleep(dynamic.Resource):
-    def __init__(self, name: str, seconds: float, opts: ResourceOptions | None = None):
-        super().__init__(SleepProvider(), name, props={"seconds": seconds}, opts=opts)
-
-
-class AwsSsoPermissionSet(ComponentResource):
-    def __init__(
-        self,
-        name: str,
-        description: str,
-        managed_policies: list[str],
-    ):
-        super().__init__("labauto:AwsSsoPermissionSet", name, None)
-        sso_instances = ssoadmin.get_instances()
-        assert len(sso_instances.arns) == 1, "Expected a single AWS SSO instance to exist"
-        sso_instance_arn = sso_instances.arns[0]
-        self.name = name
-        permission_set = ssoadmin.PermissionSet(
-            name,
-            instance_arn=sso_instance_arn,
-            name=name,
-            description=description,
-            session_duration="PT12H",
-            opts=ResourceOptions(parent=self),
-        )
-        self.permission_set_arn = permission_set.arn
-        for policy_name in managed_policies:
-            _ = ssoadmin.ManagedPolicyAttachment(
-                f"{name}-{policy_name}",
-                instance_arn=sso_instance_arn,
-                managed_policy_arn=f"arn:aws:iam::aws:policy/{policy_name}",
-                permission_set_arn=self.permission_set_arn,
-                opts=ResourceOptions(parent=self),
-            )
-        self.register_outputs(
-            {
-                "permission_set_arn": self.permission_set_arn,
-            }
-        )
-
-
-class AwsSsoPermissionSetAccountAssignments(ComponentResource):
-    def __init__(
-        self,
-        *,
-        account_id: Output[str],
-        account_name: str,  # TODO: handle this being an Output
-        permission_set: AwsSsoPermissionSet,
-        users: list[str],
-    ):
-        resource_name = f"{permission_set.name}-{account_name}"
-        super().__init__(
-            "resilience-cloud:AwsSsoPermissionSetAccountAssignments",
-            resource_name,
-            None,
-        )
-        sso_instances = ssoadmin.get_instances()
-        assert len(sso_instances.arns) == 1, "Expected a single AWS SSO instance to exist"
-        sso_instance_arn = sso_instances.arns[0]
-        self.identity_store_id = sso_instances.identity_store_ids[0]
-        users = list(set(users))  # Remove any duplicates in the list
-
-        for user in users:
-            _ = ssoadmin.AccountAssignment(
-                f"{resource_name}-{user}",
-                instance_arn=sso_instance_arn,
-                permission_set_arn=permission_set.permission_set_arn,
-                principal_id=self.lookup_user_id(user),
-                principal_type="USER",
-                target_id=account_id,
-                target_type="AWS_ACCOUNT",
-                opts=ResourceOptions(parent=self),
-            )
-
-    def lookup_user_id(self, name: str) -> str:
-        """Convert a username <first>.<last> name into an AWS SSO User ID."""
-        return identitystore_classic.get_user(
-            alternate_identifier=identitystore_classic.GetUserAlternateIdentifierArgs(
-                unique_attribute=identitystore_classic.GetUserAlternateIdentifierUniqueAttributeArgs(
-                    attribute_path="UserName", attribute_value=name
-                )
-            ),
-            identity_store_id=self.identity_store_id,
-        ).user_id
-
-
-class AwsAccount(ComponentResource):
-    def __init__(self, *, account_name: str, ou: organizations.OrganizationalUnit, parent: Resource | None = None):
-        super().__init__("labauto:aws-organization:AwsAccount", account_name, None, opts=ResourceOptions(parent=parent))
-        self.account = organizations.Account(
-            account_name,
-            opts=ResourceOptions(parent=self),
-            account_name=account_name,
-            email=f"ejfine+{account_name}@gmail.com",
-            parent_ids=[ou.id],
-            # Deliberately not setting the role_name here, as it causes problems during any subsequent updates, even when not actually changing the role name. Could possible set up ignore_changes...but just leaving it out for now
-            tags=common_tags_native(),
-        )
-        self.wait_after_account_create = Sleep(
-            f"wait-after-account-create-{account_name}",
-            60,
-            opts=ResourceOptions(parent=self, depends_on=[self.account]),
-        )
-        self.account_info_kwargs = self.account.id.apply(lambda account_id: {"id": account_id, "name": account_name})
-
-        export(f"{account_name}-account-id", self.account.id)
-        export(f"{account_name}-role-name", self.account.role_name)
-
-
-class AwsWorkload(ComponentResource):
-    def __init__(  # noqa: PLR0913 # yes, this is a lot of arguments, but they're all kwargs
-        self,
-        *,
-        workload_name: str,
-        prod_ou: organizations.OrganizationalUnit,
-        prod_account_name_suffixes: list[str],
-        central_infra_account: AwsAccount,
-        deploy_in_workload_account_assume_role_policy: Output[GetPolicyDocumentResult],
-        preview_in_workload_account_assume_role_policy: Output[GetPolicyDocumentResult],
-        kms_key_arn: str,
-        central_infra_provider: Provider,
-    ):
-        super().__init__("labauto:aws-organization:AwsWorkload", workload_name, None)
-        assert len(prod_account_name_suffixes) == 1, (
-            f"Only a single prod account name suffix is supported currently, not {len(prod_account_name_suffixes)}"
-        )
-        self.prod_accounts: list[AwsAccount] = []
-        for account_name_suffix in prod_account_name_suffixes:
-            account_name = f"{workload_name}-{account_name_suffix}"
-            account_resource = AwsAccount(account_name=account_name, ou=prod_ou, parent=self)
-            self.prod_accounts.append(account_resource)
-            provider_role_arn = account_resource.account.id.apply(
-                lambda x: f"arn:aws:iam::{x}:role/{DEFAULT_ORG_ACCESS_ROLE_NAME}"
-            )
-            assume_role = ProviderAssumeRoleArgs(role_arn=provider_role_arn, session_name="pulumi")
-            account_provider = Provider(
-                account_name,
-                assume_role=assume_role,
-                region="us-east-1",
-                opts=ResourceOptions(parent=account_resource, depends_on=[account_resource.wait_after_account_create]),
-            )
-            _ = iam.Role(
-                f"central-infra-repo-deploy-in-{account_name}",
-                role_name=f"InfraDeploy--{CENTRAL_INFRA_REPO_NAME}",
-                assume_role_policy_document=deploy_in_workload_account_assume_role_policy.json,
-                managed_policy_arns=["arn:aws:iam::aws:policy/AdministratorAccess"],
-                tags=common_tags_native(),
-                opts=ResourceOptions(provider=account_provider, parent=account_resource),
-            )
-            _ = iam.Role(
-                f"central-infra-repo-preview-in-{account_name}",
-                role_name=f"InfraPreview--{CENTRAL_INFRA_REPO_NAME}",
-                assume_role_policy_document=preview_in_workload_account_assume_role_policy.json,
-                managed_policy_arns=["arn:aws:iam::aws:policy/ReadOnlyAccess"],
-                policies=[
-                    iam.RolePolicyArgs(
-                        policy_name="InfraKmsDecrypt",
-                        policy_document=get_policy_document(
-                            statements=[
-                                GetPolicyDocumentStatementArgs(
-                                    effect="Allow",
-                                    actions=[
-                                        "kms:Decrypt",
-                                        "kms:Encrypt",  # unclear why Encrypt is required to run a Preview...but Pulumi gives an error if it's not included
-                                    ],
-                                    resources=[kms_key_arn],
-                                )
-                            ]
-                        ).json,
-                    )
-                ],
-                tags=common_tags_native(),
-                opts=ResourceOptions(provider=account_provider, parent=account_resource),
-            )
-
-        prod_account_data = [account.account_info_kwargs for account in self.prod_accounts]
-        all_prod_accounts_resolved = Output.all(
-            *[
-                Output.all(account["id"], account["name"]).apply(lambda vals: {"id": vals[0], "name": vals[1]})
-                for account in prod_account_data
-            ]
-        )
-
-        def build_workload(resolved_prod_accounts: list[dict[str, str]]) -> str:
-            # Convert resolved dicts to Pydantic AwsAccountInfo models
-            prod_accounts_info = [AwsAccountInfo(**acc) for acc in resolved_prod_accounts]
-
-            logical_workload = AwsLogicalWorkload(
-                name=workload_name,
-                prod_accounts=prod_accounts_info,  # Insert all resolved dev accounts
-            )
-
-            return logical_workload.model_dump_json()
-
-        _ = ssm.Parameter(
-            f"{workload_name}-workload-info-for-central-infra",
-            type=ssm.ParameterType.STRING,
-            name=f"{WORKLOAD_INFO_SSM_PARAM_PREFIX}/{workload_name}",
-            description="Hold the logical workload information so that Central Infra account can deploy various resources within them.",
-            tags=common_tags(),
-            value=all_prod_accounts_resolved.apply(build_workload),
-            opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
-        )
-
-
-def pulumi_program() -> None:
+def pulumi_program() -> None:  # noqa: PLR0915 # yes, this is getting long...need to refactor soon
     """Execute creating the stack."""
     aws_account_id = get_aws_account_id()
     export("aws-account-id", aws_account_id)
@@ -287,7 +75,7 @@ def pulumi_program() -> None:
         parent_id=organization_root_id,
         tags=common_tags_native(),
     )
-    _ = organizations.OrganizationalUnit(
+    workload_prod_ou = organizations.OrganizationalUnit(
         "NonQualifiedWorkloadProd",
         name="Prod",
         parent_id=non_qualified_workload_ou.id,
@@ -301,8 +89,17 @@ def pulumi_program() -> None:
         tags=common_tags_native(),
         opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
     )
-    central_infra_account_name = "central-infra-prod"
+    workload_staging_ou = organizations.OrganizationalUnit(
+        "NonQualifiedWorkloadStaging",
+        name="Staging",
+        parent_id=non_qualified_workload_ou.id,
+        tags=common_tags_native(),
+        opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
+    )
+    central_infra_workload_name = "central-infra"  # while it's not truly a Workload, this helps with generating some of the resources that all workloads also generate
+    central_infra_account_name = f"{central_infra_workload_name}-prod"
     central_infra_account = AwsAccount(ou=central_infra_prod_ou, account_name=central_infra_account_name)
+
     enable_service_access = (
         Command(  # I think this needs to be after at least 1 other account is created, but maybe not
             "enable-aws-service-access",
@@ -323,6 +120,36 @@ def pulumi_program() -> None:
             parent=central_infra_account,
         ),
     )
+
+    prod_account_data = [account.account_info_kwargs for account in [central_infra_account]]
+    all_prod_accounts_resolved = Output.all(
+        *[
+            Output.all(account["id"], account["name"]).apply(lambda vals: {"id": vals[0], "name": vals[1]})
+            for account in prod_account_data
+        ]
+    )
+
+    def build_central_infra_workload(resolved_prod_accounts: list[dict[str, str]]) -> str:
+        # Convert resolved dicts to Pydantic AwsAccountInfo models
+        prod_accounts_info = [AwsAccountInfo(**acc) for acc in resolved_prod_accounts]
+
+        logical_workload = AwsLogicalWorkload(
+            name=central_infra_workload_name,
+            prod_accounts=prod_accounts_info,
+        )
+
+        return logical_workload.model_dump_json()
+
+    _ = ssm.Parameter(  # TODO: consider DRY-ing this up with the parameter generation in lib.py
+        f"{central_infra_workload_name}-workload-info-for-central-infra",
+        type=ssm.ParameterType.STRING,
+        description="Hold the logical workload information so that Central Infra account can deploy various resources within them.",
+        name=f"{WORKLOAD_INFO_SSM_PARAM_PREFIX}/{central_infra_workload_name}",
+        tags=common_tags(),
+        value=all_prod_accounts_resolved.apply(build_central_infra_workload),
+        opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
+    )
+
     central_state_bucket = s3.Bucket(
         "central-infra-state",
         tags=common_tags_native(),
@@ -374,9 +201,7 @@ def pulumi_program() -> None:
                         GetPolicyDocumentStatementConditionArgs(
                             test="StringLike",
                             variable="token.actions.githubusercontent.com:sub",
-                            values=[
-                                f"repo:{CENTRAL_INFRA_GITHUB_ORG_NAME}/{CENTRAL_INFRA_REPO_NAME}:*"  # ref:refs/heads/initial-steps"
-                            ],
+                            values=[f"repo:{CENTRAL_INFRA_GITHUB_ORG_NAME}/{CENTRAL_INFRA_REPO_NAME}:*"],
                         ),
                         GetPolicyDocumentStatementConditionArgs(
                             test="StringEquals",
@@ -539,11 +364,11 @@ def pulumi_program() -> None:
         return logical_workload.model_dump_json()
 
     workload_name = "biotasker"
-    _ = ssm.Parameter(
+    _ = ssm.Parameter(  # TODO: consider DRY-ing this up with the parameter generation in lib.py
         f"{workload_name}-workload-info-for-central-infra",
+        description="Hold the logical workload information so that Central Infra account can deploy various resources within them.",
         type=ssm.ParameterType.STRING,
         name=f"{WORKLOAD_INFO_SSM_PARAM_PREFIX}/{workload_name}",
-        description="Hold the logical workload information so that Central Infra account can deploy various resources within them.",
         tags=common_tags(),
         value=all_dev_accounts_resolved.apply(build_workload),
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
@@ -593,16 +418,18 @@ def pulumi_program() -> None:
         tags=common_tags_native(),
         opts=ResourceOptions(provider=biotasker_provider, parent=biotasker_dev_account),
     )
-
+    common_workload_kwargs: CommonWorkloadKwargs = {
+        "central_infra_account": central_infra_account,
+        "deploy_in_workload_account_assume_role_policy": deploy_in_workload_account_assume_role_policy,
+        "preview_in_workload_account_assume_role_policy": preview_in_workload_account_assume_role_policy,
+        "kms_key_arn": kms_key_arn,
+        "central_infra_provider": central_infra_provider,
+    }
     identity_center_delegate_workload = AwsWorkload(
         workload_name="identity-center",
         prod_ou=central_infra_prod_ou,
         prod_account_name_suffixes=["prod"],
-        central_infra_account=central_infra_account,
-        deploy_in_workload_account_assume_role_policy=deploy_in_workload_account_assume_role_policy,
-        preview_in_workload_account_assume_role_policy=preview_in_workload_account_assume_role_policy,
-        kms_key_arn=kms_key_arn,
-        central_infra_provider=central_infra_provider,
+        **common_workload_kwargs,
     )
     _ = DelegatedAdministrator(
         "delegate-admin-to-identity-center-prod",
@@ -618,28 +445,13 @@ def pulumi_program() -> None:
             ],
         ),
     )
-
-    # TODO: delegate SSO management https://docs.aws.amazon.com/singlesignon/latest/userguide/delegated-admin-how-to-register.html
-    admin_permission_set = AwsSsoPermissionSet(
-        "LowRiskAccountAdminAccess", "Low Risk Account Admin Access", ["AdministratorAccess"]
-    )
-    _ = AwsSsoPermissionSetAccountAssignments(
-        account_id=central_infra_account.account.id,
-        account_name=central_infra_account_name,
-        permission_set=admin_permission_set,
-        users=["eli.fine"],
-    )
-    _ = AwsSsoPermissionSetAccountAssignments(
-        account_id=biotasker_dev_account.account.id,
-        account_name="biotasker-dev",
-        permission_set=admin_permission_set,
-        users=["eli.fine"],
-    )
-    _ = identity_center_delegate_workload.prod_accounts[0].account.account_name.apply(
-        lambda account_name: AwsSsoPermissionSetAccountAssignments(
-            account_id=identity_center_delegate_workload.prod_accounts[0].account.id,
-            account_name=account_name,
-            permission_set=admin_permission_set,
-            users=["eli.fine"],
-        )
+    _ = AwsWorkload(
+        workload_name="cloud-courier",
+        prod_ou=workload_prod_ou,
+        prod_account_name_suffixes=["production"],
+        dev_account_name_suffixes=["development"],
+        staging_account_name_suffixes=["staging"],
+        dev_ou=workload_dev_ou,
+        staging_ou=workload_staging_ou,
+        **common_workload_kwargs,
     )
