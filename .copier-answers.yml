@@ -1,16 +1,20 @@
 # Changes here will be overwritten by Copier
-_commit: d037ec8
+_commit: 03ac91b
 _src_path: gh:LabAutomationAndScreening/copier-aws-organization.git
 account_email_domain: gmail.com
 account_email_prefix: ejfine
 aws_identity_center_id: d-9067c20053
+aws_org_home_region: us-east-1
 aws_production_account_id: '789893201852'
+aws_region_for_stack: us-east-1
 central_infra_github_organization_name: ejfine
 central_infra_repo_name: aws-central-infrastructure
 description: Manage my AWS organization
 pulumi_stack_name: prod
 python_version: 3.12.7
 repo_name: aws-organization
+repo_org_name: ejfine
 ssh_port_number: 51446
+use_staging_environment: false
 use_windows_in_ci: false
 
