@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: a49cb12
+_commit: 36c18b7
 _src_path: gh:LabAutomationAndScreening/copier-aws-organization.git
 account_email_domain: gmail.com
 account_email_prefix: ejfine
@@ -9,6 +9,7 @@ aws_production_account_id: '789893201852'
 aws_region_for_stack: us-east-1
 central_infra_github_organization_name: ejfine
 central_infra_repo_name: aws-central-infrastructure
+configure_cloud_courier: true
 description: Manage my AWS organization
 pulumi_stack_name: prod
 python_version: 3.12.7

@@ -26,6 +26,7 @@ from pulumi_command.local import Command
 
 from .constants import CENTRAL_INFRA_GITHUB_ORG_NAME
 from .constants import CENTRAL_INFRA_REPO_NAME
+from .constants import CONFIGURE_CLOUD_COURIER
 from .lib import DEFAULT_ORG_ACCESS_ROLE_NAME
 from .lib import AwsAccount
 from .lib import AwsWorkload
@@ -445,13 +446,14 @@ def pulumi_program() -> None:  # noqa: PLR0915 # yes, this is getting long...nee
             ],
         ),
     )
-    _ = AwsWorkload(
-        workload_name="cloud-courier",
-        prod_ou=workload_prod_ou,
-        prod_account_name_suffixes=["production"],
-        dev_account_name_suffixes=["development"],
-        staging_account_name_suffixes=["staging"],
-        dev_ou=workload_dev_ou,
-        staging_ou=workload_staging_ou,
-        **common_workload_kwargs,
-    )
+    if CONFIGURE_CLOUD_COURIER:
+        _ = AwsWorkload(
+            workload_name="cloud-courier",
+            prod_ou=workload_prod_ou,
+            prod_account_name_suffixes=["production"],
+            dev_account_name_suffixes=["development"],
+            staging_account_name_suffixes=["staging"],
+            dev_ou=workload_dev_ou,
+            staging_ou=workload_staging_ou,
+            **common_workload_kwargs,
+        )
