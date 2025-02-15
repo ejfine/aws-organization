@@ -23,6 +23,7 @@ from .shared_lib import AwsAccountInfo
 from .shared_lib import AwsLogicalWorkload
 from .workload import DEFAULT_ORG_ACCESS_ROLE_NAME
 from .workload import CommonWorkloadKwargs
+from .workload import create_pulumi_kms_role_policy_args
 
 
 def create_central_infra_workload(org_units: OrganizationalUnits) -> tuple[CommonWorkloadKwargs, Command]:
@@ -200,23 +201,7 @@ def create_central_infra_workload(org_units: OrganizationalUnits) -> tuple[Commo
         role_name=f"InfraPreview--{CENTRAL_INFRA_REPO_NAME}",
         assume_role_policy_document=preview_assume_role_policy_doc.json,
         managed_policy_arns=["arn:aws:iam::aws:policy/ReadOnlyAccess"],
-        policies=[
-            iam.RolePolicyArgs(
-                policy_name="InfraKmsDecrypt",
-                policy_document=get_policy_document(
-                    statements=[
-                        GetPolicyDocumentStatementArgs(
-                            effect="Allow",
-                            actions=[
-                                "kms:Decrypt",
-                                "kms:Encrypt",  # unclear why Encrypt is required to run a Preview...but Pulumi gives an error if it's not included
-                            ],
-                            resources=[kms_key_arn],
-                        )
-                    ]
-                ).json,
-            )
-        ],
+        policies=[create_pulumi_kms_role_policy_args(kms_key_arn)],
         tags=common_tags_native(),
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account),
     )
