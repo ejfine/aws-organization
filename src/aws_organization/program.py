@@ -13,11 +13,9 @@ from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
 from pulumi_aws.iam import get_policy_document
 from pulumi_aws.organizations import DelegatedAdministrator
 from pulumi_aws.organizations import DelegatedAdministratorArgs
-from pulumi_aws.organizations import get_organization
 from pulumi_aws_native import Provider
 from pulumi_aws_native import ProviderAssumeRoleArgs
 from pulumi_aws_native import iam
-from pulumi_aws_native import organizations
 from pulumi_aws_native import s3
 from pulumi_aws_native import ssm
 from pulumi_command.local import Command
@@ -29,6 +27,7 @@ from .lib import DEFAULT_ORG_ACCESS_ROLE_NAME
 from .lib import AwsAccount
 from .lib import AwsWorkload
 from .lib import CommonWorkloadKwargs
+from .lib import create_organizational_units
 from .lib.shared_lib import WORKLOAD_INFO_SSM_PARAM_PREFIX
 from .lib.shared_lib import AwsAccountInfo
 from .lib.shared_lib import AwsLogicalWorkload
@@ -44,53 +43,11 @@ def pulumi_program() -> None:  # noqa: PLR0915 # yes, this is getting long...nee
     export("env", env)
 
     # Create Resources Here
+    org_units = create_organizational_units()
 
-    organization_root_id = get_organization().roots[0].id
-
-    central_infra_ou = organizations.OrganizationalUnit(
-        "CentralizedInfrastructure",
-        name="CentralizedInfrastructure",
-        parent_id=organization_root_id,
-        tags=common_tags_native(),
-    )
-    central_infra_prod_ou = organizations.OrganizationalUnit(
-        "CentralInfraProd",
-        name="Prod",
-        parent_id=central_infra_ou.id,
-        tags=common_tags_native(),
-        opts=ResourceOptions(parent=central_infra_ou, delete_before_replace=True),
-    )
-
-    non_qualified_workload_ou = organizations.OrganizationalUnit(
-        "NonQualifiedWorkloads",
-        name="NonQualifiedWorkloads",
-        parent_id=organization_root_id,
-        tags=common_tags_native(),
-    )
-    workload_prod_ou = organizations.OrganizationalUnit(
-        "NonQualifiedWorkloadProd",
-        name="Prod",
-        parent_id=non_qualified_workload_ou.id,
-        tags=common_tags_native(),
-        opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
-    )
-    workload_dev_ou = organizations.OrganizationalUnit(
-        "NonQualifiedWorkloadDev",
-        name="Dev",
-        parent_id=non_qualified_workload_ou.id,
-        tags=common_tags_native(),
-        opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
-    )
-    workload_staging_ou = organizations.OrganizationalUnit(
-        "NonQualifiedWorkloadStaging",
-        name="Staging",
-        parent_id=non_qualified_workload_ou.id,
-        tags=common_tags_native(),
-        opts=ResourceOptions(parent=non_qualified_workload_ou, delete_before_replace=True),
-    )
     central_infra_workload_name = "central-infra"  # while it's not truly a Workload, this helps with generating some of the resources that all workloads also generate
     central_infra_account_name = f"{central_infra_workload_name}-prod"
-    central_infra_account = AwsAccount(ou=central_infra_prod_ou, account_name=central_infra_account_name)
+    central_infra_account = AwsAccount(ou=org_units.central_infra_prod, account_name=central_infra_account_name)
 
     enable_service_access = (
         Command(  # I think this needs to be after at least 1 other account is created, but maybe not
@@ -334,7 +291,7 @@ def pulumi_program() -> None:  # noqa: PLR0915 # yes, this is getting long...nee
         )
     )
 
-    biotasker_dev_account = AwsAccount(ou=workload_dev_ou, account_name="biotasker-dev")
+    biotasker_dev_account = AwsAccount(ou=org_units.non_qualified_workload_dev, account_name="biotasker-dev")
 
     dev_account_data = [biotasker_dev_account.account_info_kwargs]
     all_dev_accounts_resolved = Output.all(
@@ -419,7 +376,7 @@ def pulumi_program() -> None:  # noqa: PLR0915 # yes, this is getting long...nee
     }
     identity_center_delegate_workload = AwsWorkload(
         workload_name="identity-center",
-        prod_ou=central_infra_prod_ou,
+        prod_ou=org_units.central_infra_prod,
         prod_account_name_suffixes=["prod"],
         **common_workload_kwargs,
     )
@@ -440,11 +397,11 @@ def pulumi_program() -> None:  # noqa: PLR0915 # yes, this is getting long...nee
     if CONFIGURE_CLOUD_COURIER:
         _ = AwsWorkload(
             workload_name="cloud-courier",
-            prod_ou=workload_prod_ou,
+            prod_ou=org_units.non_qualified_workload_prod,
             prod_account_name_suffixes=["production"],
             dev_account_name_suffixes=["development"],
             staging_account_name_suffixes=["staging"],
-            dev_ou=workload_dev_ou,
-            staging_ou=workload_staging_ou,
+            dev_ou=org_units.non_qualified_workload_dev,
+            staging_ou=org_units.non_qualified_workload_staging,
             **common_workload_kwargs,
         )
