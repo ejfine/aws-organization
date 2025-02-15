@@ -1,5 +1,4 @@
 import logging
-from typing import TypedDict
 
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
@@ -8,7 +7,6 @@ from ephemeral_pulumi_deploy.utils import common_tags_native
 from pulumi import Output
 from pulumi import ResourceOptions
 from pulumi import export
-from pulumi_aws.iam import GetPolicyDocumentResult
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
@@ -30,19 +28,12 @@ from .constants import CONFIGURE_CLOUD_COURIER
 from .lib import DEFAULT_ORG_ACCESS_ROLE_NAME
 from .lib import AwsAccount
 from .lib import AwsWorkload
-from .shared_lib import WORKLOAD_INFO_SSM_PARAM_PREFIX
-from .shared_lib import AwsAccountInfo
-from .shared_lib import AwsLogicalWorkload
+from .lib import CommonWorkloadKwargs
+from .lib.shared_lib import WORKLOAD_INFO_SSM_PARAM_PREFIX
+from .lib.shared_lib import AwsAccountInfo
+from .lib.shared_lib import AwsLogicalWorkload
 
 logger = logging.getLogger(__name__)
-
-
-class CommonWorkloadKwargs(TypedDict):
-    central_infra_account: AwsAccount
-    deploy_in_workload_account_assume_role_policy: Output[GetPolicyDocumentResult]
-    preview_in_workload_account_assume_role_policy: Output[GetPolicyDocumentResult]
-    kms_key_arn: str
-    central_infra_provider: Provider
 
 
 def pulumi_program() -> None:  # noqa: PLR0915 # yes, this is getting long...need to refactor soon
