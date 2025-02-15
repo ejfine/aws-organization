@@ -26,6 +26,24 @@ logger = logging.getLogger(__name__)
 DEFAULT_ORG_ACCESS_ROLE_NAME = "OrganizationAccountAccessRole"
 
 
+def create_pulumi_kms_role_policy_args(kms_key_arn: str) -> iam.RolePolicyArgs:
+    return iam.RolePolicyArgs(
+        policy_document=get_policy_document(
+            statements=[
+                GetPolicyDocumentStatementArgs(
+                    actions=[
+                        "kms:Decrypt",
+                        "kms:Encrypt",  # unclear why Encrypt is required to run a Preview...but Pulumi gives an error if it's not included
+                    ],
+                    effect="Allow",
+                    resources=[kms_key_arn],
+                )
+            ]
+        ).json,
+        policy_name="InfraKmsDecrypt",
+    )
+
+
 class AwsWorkload(ComponentResource):
     def __init__(  # noqa: PLR0913 # yes, this is a lot of arguments, but they're all kwargs
         self,
@@ -152,23 +170,7 @@ class AwsWorkload(ComponentResource):
             role_name=f"InfraPreview--{CENTRAL_INFRA_REPO_NAME}",
             assume_role_policy_document=self.preview_in_workload_account_assume_role_policy.json,
             managed_policy_arns=["arn:aws:iam::aws:policy/ReadOnlyAccess"],
-            policies=[
-                iam.RolePolicyArgs(
-                    policy_document=get_policy_document(
-                        statements=[
-                            GetPolicyDocumentStatementArgs(
-                                actions=[
-                                    "kms:Encrypt",  # unclear why Encrypt is required to run a Preview...but Pulumi gives an error if it's not included
-                                    "kms:Decrypt",
-                                ],
-                                resources=[self.kms_key_arn],
-                                effect="Allow",
-                            )
-                        ]
-                    ).json,
-                    policy_name="InfraKmsDecrypt",
-                )
-            ],
+            policies=[create_pulumi_kms_role_policy_args(self.kms_key_arn)],
             tags=common_tags_native(),
             opts=ResourceOptions(provider=account_provider, parent=account_resource),
         )
