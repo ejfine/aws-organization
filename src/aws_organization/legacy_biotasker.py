@@ -7,12 +7,12 @@ from pulumi_aws_native import ProviderAssumeRoleArgs
 from pulumi_aws_native import iam
 from pulumi_aws_native import ssm
 
-from .constants import CENTRAL_INFRA_REPO_NAME
 from .lib import DEFAULT_ORG_ACCESS_ROLE_NAME
 from .lib import AwsAccount
 from .lib import CommonWorkloadKwargs
 from .lib import OrganizationalUnits
 from .lib import create_pulumi_kms_role_policy_args
+from .lib.constants import CENTRAL_INFRA_REPO_NAME
 from .lib.shared_lib import WORKLOAD_INFO_SSM_PARAM_PREFIX
 from .lib.shared_lib import AwsAccountInfo
 from .lib.shared_lib import AwsLogicalWorkload
