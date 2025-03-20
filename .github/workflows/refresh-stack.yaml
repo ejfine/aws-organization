@@ -1,10 +1,7 @@
-name: CI
+name: Refresh Stack
 
 on:
-  push:
-    branches-ignore:
-      - 'gh-readonly-queue/**' # don't run (again) when on these special branches created during merge groups; the `on: merge_group` already triggers it.
-  merge_group:
+  workflow_dispatch:
 
 env:
   PYTHONUNBUFFERED: True
@@ -47,7 +44,7 @@ jobs:
       - name: Run pre-commit
         run:  pre-commit run -a
 
-  pulumi-workflow:
+  pulumi-refresh:
     uses: ./.github/workflows/pulumi-aws.yml
     needs: [ lint ]
     with:
@@ -57,16 +54,18 @@ jobs:
       DEPLOY_SCRIPT_MODULE_NAME: aws_organization.lib
       PULUMI_PREVIEW: true
       PREVIEW_ROLE_NAME: OrgRootInfraPreview
-      PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
-      PULUMI_UP_ROLE_NAME: OrgRootInfraDeploy
+      PULUMI_REFRESH: true
+      REFRESH_ROLE_NAME: OrgRootInfraDeploy
       AWS_ACCOUNT_ID: "789893201852"
 
-  required-check:
-    runs-on: ubuntu-24.04
-    needs: [ lint, pulumi-workflow ]
-    if: always()
-    steps:
-      - name: fail if prior job failure
-        if: needs.lint.result != 'success' || needs.pulumi-workflow.result != 'success'
-        run: |
-          exit 1
+  pulumi-preview-after-refresh:
+    uses: ./.github/workflows/pulumi-aws.yml
+    needs: [ pulumi-refresh ]
+    with:
+      AWS_REGION: us-east-1
+      PULUMI_STACK_NAME: prod
+      PYTHON_VERSION: 3.12.7
+      DEPLOY_SCRIPT_MODULE_NAME: aws_organization.lib
+      PULUMI_PREVIEW: true
+      PREVIEW_ROLE_NAME: OrgRootInfraPreview
+      AWS_ACCOUNT_ID: "789893201852"

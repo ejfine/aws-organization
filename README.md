@@ -8,12 +8,19 @@
 
 # Usage
 
+## Configuring Organization Administrators
+
+To grant users administrative access to the AWS Organization, add their usernames to the `org_admins` list in the `src/aws_organization/org_management.py` file.
+
+## Creating workloads
+
+To create a new logical workload (a set of AWS accounts), add one in the `src/aws_organization/workloads.py` file.
 
 
 # Development
 
 ## Using Pulumi
-Run a Pulumi Preview: `uv run python -m aws_organization.pulumi_deploy --stack=prod`
+Run a Pulumi Preview: `uv run python -m aws_organization.lib.pulumi_deploy --stack=prod`
 
 ## Updating from the template
 This repository uses a copier template. To pull in the latest updates from the template, use the command:
