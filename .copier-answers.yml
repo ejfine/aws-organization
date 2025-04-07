@@ -17,7 +17,7 @@ python_package_registry: PyPI
 python_version: 3.12.7
 repo_name: aws-organization
 repo_org_name: ejfine
-ssh_port_number: 51446
+ssh_port_number: 49170
 use_staging_environment: false
 use_windows_in_ci: false
 

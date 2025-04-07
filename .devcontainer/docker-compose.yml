@@ -11,7 +11,7 @@ services:
       - python_venv:/workspaces/aws-organization/.venv
     command: sleep infinity
     ports:
-      - "51446:2222"
+      - "49170:2222"
     environment:
       - AWS_PROFILE=localstack
       - AWS_DEFAULT_REGION=us-east-1
