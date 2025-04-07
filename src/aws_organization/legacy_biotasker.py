@@ -1,5 +1,8 @@
 from ephemeral_pulumi_deploy.utils import common_tags
 from ephemeral_pulumi_deploy.utils import common_tags_native
+from lab_auto_pulumi import WORKLOAD_INFO_SSM_PARAM_PREFIX
+from lab_auto_pulumi import AwsAccountInfo
+from lab_auto_pulumi import AwsLogicalWorkload
 from pulumi import Output
 from pulumi import ResourceOptions
 from pulumi_aws_native import Provider
@@ -13,9 +16,6 @@ from .lib import CommonWorkloadKwargs
 from .lib import OrganizationalUnits
 from .lib import create_pulumi_kms_role_policy_args
 from .lib.constants import CENTRAL_INFRA_REPO_NAME
-from .lib.shared_lib import WORKLOAD_INFO_SSM_PARAM_PREFIX
-from .lib.shared_lib import AwsAccountInfo
-from .lib.shared_lib import AwsLogicalWorkload
 
 
 def create_legacy_biotasker(org_units: OrganizationalUnits, common_workload_kwargs: CommonWorkloadKwargs):
