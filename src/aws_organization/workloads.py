@@ -8,7 +8,7 @@ def create_workloads(
     *,
     org_units: OrganizationalUnits,
     common_workload_kwargs: CommonWorkloadKwargs,
-    workloads: list[AwsWorkload],  # noqa: ARG001 # this arg will eventually be used
+    workloads: list[AwsWorkload],
 ) -> None:
     """Define workloads.
 
@@ -29,3 +29,13 @@ def create_workloads(
     ```
     """
     create_legacy_biotasker(org_units, common_workload_kwargs)
+    workloads.append(
+        AwsWorkload(
+            workload_name="elifine-com",
+            prod_ou=org_units.non_qualified_workload_prod,
+            prod_account_name_suffixes=["production"],
+            dev_ou=org_units.non_qualified_workload_dev,
+            staging_ou=org_units.non_qualified_workload_staging,
+            **common_workload_kwargs,
+        )
+    )
