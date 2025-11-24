@@ -27,7 +27,7 @@ jobs:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     with:
-      python-version: 3.12.7
+      python-version: 3.13.2
 
   pulumi-workflow:
     uses: ./.github/workflows/pulumi-aws.yml
@@ -38,7 +38,7 @@ jobs:
     with:
       AWS_REGION: us-east-1
       PULUMI_STACK_NAME: prod
-      PYTHON_VERSION: 3.12.7
+      PYTHON_VERSION: 3.13.2
       DEPLOY_SCRIPT_MODULE_NAME: aws_organization.lib
       PULUMI_PREVIEW: true
       PREVIEW_ROLE_NAME: OrgRootInfraPreview
@@ -48,6 +48,7 @@ jobs:
 
   required-check:
     runs-on: ubuntu-24.04
+    timeout-minutes: 2
     needs:
       - get-values
       - pulumi-workflow

@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: v0.0.25
+_commit: v0.0.26
 _src_path: gh:LabAutomationAndScreening/copier-aws-organization.git
 account_email_domain: gmail.com
 account_email_prefix: ejfine
@@ -11,10 +11,11 @@ central_infra_github_organization_name: ejfine
 central_infra_repo_name: aws-central-infrastructure
 configure_cloud_courier: true
 description: Manage my AWS organization
+install_claude_cli: false
 is_open_source: true
 pulumi_stack_name: prod
 python_package_registry: PyPI
-python_version: 3.12.7
+python_version: 3.13.2
 repo_name: aws-organization
 repo_org_name: ejfine
 ssh_port_number: 49170
