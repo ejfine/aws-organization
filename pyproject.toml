@@ -4,26 +4,26 @@ version = "0.1.0"
 description = "Managing the AWS Organization and Accounts"
 
 readme = "README.md"
-requires-python = ">=3.12.7"
+requires-python = ">=3.13.2"
 
 dependencies = [
     # Specific to this template
 
 
     # Managed by upstream template
-    "pyright>=1.1.405",
-    "pytest>=8.4.2",
-    "pytest-cov>=6.3.0",
-    "pytest-randomly>=3.16.0",
-    "pulumi>=3.193.0",
-    "pulumi-aws>=7.7.0",
-    "pulumi-aws-native>=1.33.0",
-    "pulumi-command>=1.1.0",
+    "pyright>=1.1.407",
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+    "pytest-randomly>=4.0.1",
+    "pulumi>=3.208.0",
+    "pulumi-aws>=7.12.0",
+    "pulumi-aws-native>=1.38.0",
+    "pulumi-command>=1.1.3",
     "ephemeral-pulumi-deploy>=0.0.5",
-    "lab-auto-pulumi>=0.1.16",
-    "boto3>=1.40.25",
-    "boto3-stubs[all]>=1.40.25",
-    "pydantic>=2.11.7",
+    "lab-auto-pulumi>=0.1.17",
+    "boto3>=1.41.2",
+    "boto3-stubs[all]>=1.41.2",
+    "pydantic>=2.12.4",
 ]
 
 [tool.uv]
