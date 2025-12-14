@@ -1,6 +1,10 @@
 version = 1
 revision = 3
 requires-python = ">=3.13.2"
+resolution-markers = [
+    "python_full_version >= '3.14'",
+    "python_full_version < '3.14'",
+]
 
 [[package]]
 name = "annotated-types"
@@ -68,16 +72,16 @@ requires-dist = [
 
 [[package]]
 name = "boto3"
-version = "1.41.2"
+version = "1.42.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/81/2600e83ddd7cb1dac43d28fd39774434afcda0d85d730402192b1a9266a3/boto3-1.41.2.tar.gz", hash = "sha256:7054fbc61cadab383f40ea6d725013ba6c8f569641dddb14c0055e790280ad6c", size = 111593, upload-time = "2025-11-21T20:32:08.622Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8c/07/dfa651dbd57bfc34d952a101280928bab08ed6186f009c660a36c211ccff/boto3-1.42.9.tar.gz", hash = "sha256:cdd4cc3e5bb08ed8a0c5cc77eca78f98f0239521de0991f14e44b788b0c639b2", size = 112827, upload-time = "2025-12-12T20:33:20.236Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/48/41/1ed7fdc3f124c1cf2df78e605588fa78a182410b832f5b71944a69436171/boto3-1.41.2-py3-none-any.whl", hash = "sha256:edcde82fdae4201aa690e3683f8e5b1a846cf1bbf79d03db4fa8a2f6f46dba9c", size = 139343, upload-time = "2025-11-21T20:32:07.147Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/eb/97fdf6fbc8066fb1475b8ef260c1a58798b2b4f1e8839b501550de5d5ba1/boto3-1.42.9-py3-none-any.whl", hash = "sha256:d21d22af9aeb1bad8e9b670a221d6534c0120f7e7baf523dafaca83f1f5c3f90", size = 140561, upload-time = "2025-12-12T20:33:18.035Z" },
 ]
 
 [[package]]
@@ -512,16 +516,16 @@ ssm = [
 
 [[package]]
 name = "botocore"
-version = "1.41.2"
+version = "1.42.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c5/0b/6eb5dc752b240dd0b76d7e3257ae25b70683896d1789e7bfb78fba7c7c99/botocore-1.41.2.tar.gz", hash = "sha256:49a3e8f4c1a1759a687941fef8b36efd7bafcf63c1ef74aa75d6497eb4887c9c", size = 14660558, upload-time = "2025-11-21T20:31:58.785Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/f3/2d2cfb500e2dc00b0e33e3c8743306e6330f3cf219d19e9260dab2f3d6c2/botocore-1.42.9.tar.gz", hash = "sha256:74f69bfd116cc7c8215481284957eecdb48580e071dd50cb8c64356a866abd8c", size = 14861916, upload-time = "2025-12-12T20:33:08.017Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/4d/516ee2157c0686fbe48ca8b94dffc17a0c35040d4626761d74b1a43215c8/botocore-1.41.2-py3-none-any.whl", hash = "sha256:154052dfaa7292212f01c8fab822c76cd10a15a7e164e4c45e4634eb40214b90", size = 14324839, upload-time = "2025-11-21T20:31:56.236Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/2a/e9275f40042f7a09915c4be86b092cb02dc4bd74e77ab8864f485d998af1/botocore-1.42.9-py3-none-any.whl", hash = "sha256:f99ba2ca34e24c4ebec150376c815646970753c032eb84f230874b2975a185a8", size = 14537810, upload-time = "2025-12-12T20:33:04.069Z" },
 ]
 
 [[package]]
@@ -4465,7 +4469,7 @@ wheels = [
 
 [[package]]
 name = "pulumi"
-version = "3.208.0"
+version = "3.212.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "debugpy" },
@@ -4477,35 +4481,35 @@ dependencies = [
     { name = "semver" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/08/f46087d5ada41fe3b94a9968b960c8c070ee776df118ffd0c80d60c93ee1/pulumi-3.208.0-py3-none-any.whl", hash = "sha256:b70897fbe474ecc217c9f7d62e90a96d24fa1a67f7719d90edd4e3533603d180", size = 392152, upload-time = "2025-11-20T18:04:08.781Z" },
+    { url = "https://files.pythonhosted.org/packages/74/4a/aeb90cc3d39931d094bc1f67c30d3c7d5ac05bc89c7ad3827c0c8ddfa1b9/pulumi-3.212.0-py3-none-any.whl", hash = "sha256:98c2d712f8c9c434f88c1dcabf1ee8763425a3736377892d0dfeb95a7838ea6d", size = 384348, upload-time = "2025-12-12T20:51:16.142Z" },
 ]
 
 [[package]]
 name = "pulumi-aws"
-version = "7.12.0"
+version = "7.14.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "parver" },
     { name = "pulumi" },
     { name = "semver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/07/7f/500d768ec280edcbf8c06c190137d600eef267d32ed1a57eb023a1bac6a4/pulumi_aws-7.12.0.tar.gz", hash = "sha256:57e2b76714eae3308c2ad472b64de81b2f650422375331247b01800a765aa4bf", size = 8397584, upload-time = "2025-11-21T01:22:32.128Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1d/4e/db06a73998eac84b3ef9a01e97b68a192aef9a204e6860c64e58a05209de/pulumi_aws-7.14.0.tar.gz", hash = "sha256:4b836e8658caa4d9cc40764cae16854ea76654092b323ae9c8ea877c5b880ed9", size = 8517030, upload-time = "2025-12-12T15:02:01.012Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/31/75d1dac80ae607178108ac1c485cde82e21f2f91d7758815571c03dfd4cd/pulumi_aws-7.12.0-py3-none-any.whl", hash = "sha256:e5c0a56d5f3fd583bcdaa6b044a1d69d4bdbf70649a6e9137939551644875254", size = 11377033, upload-time = "2025-11-21T01:22:29.146Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/32/291ae81895f0bf5a01d1eb9eecaa1a6cf9706f59be039d2a29c393a39f31/pulumi_aws-7.14.0-py3-none-any.whl", hash = "sha256:f1c78d927fe3bbea80f6d69b2173704e5683ef0301c0ac132ce2e365984a84a5", size = 11518288, upload-time = "2025-12-12T15:01:58.659Z" },
 ]
 
 [[package]]
 name = "pulumi-aws-native"
-version = "1.38.0"
+version = "1.40.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "parver" },
     { name = "pulumi" },
     { name = "semver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5c/e4/320ca4b3d374f30923aa44e826267b98e60d228424821493c334ef7527b3/pulumi_aws_native-1.38.0.tar.gz", hash = "sha256:45697b8dbf7bf2fc00fb84d88ef5e15e6fa4ddbbb34980c8585145c3b73dde20", size = 7912760, upload-time = "2025-11-05T15:41:25.41Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/85/7e617ab966e107a2aa69c164318eb9492f98b9748c41ca46857c06517bec/pulumi_aws_native-1.40.0.tar.gz", hash = "sha256:99c33327d2769cb728bce4128b77ffa74fea2e6a6d825398924d8e20b72428ef", size = 8122829, upload-time = "2025-12-11T23:06:00.82Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/c3/067116fd857c9ef7b7c16478b568aa51c4769ae8de73d6807a90a0ba2157/pulumi_aws_native-1.38.0-py3-none-any.whl", hash = "sha256:579d310d9233159317e03286cd3dbf70bbe8d169638950a8af2ef1681b525eb7", size = 11222423, upload-time = "2025-11-05T15:41:22.076Z" },
+    { url = "https://files.pythonhosted.org/packages/82/9e/5cd171536a892ca7b3ebc5707fff321571629b956403a5b364730f33353d/pulumi_aws_native-1.40.0-py3-none-any.whl", hash = "sha256:6efe2d91713730436e880d84516d388914e0f53304524fb9176e8a3348a7c3a2", size = 11474006, upload-time = "2025-12-11T23:05:58.202Z" },
 ]
 
 [[package]]
@@ -4685,14 +4689,14 @@ wheels = [
 
 [[package]]
 name = "s3transfer"
-version = "0.15.0"
+version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ca/bb/940d6af975948c1cc18f44545ffb219d3c35d78ec972b42ae229e8e37e08/s3transfer-0.15.0.tar.gz", hash = "sha256:d36fac8d0e3603eff9b5bfa4282c7ce6feb0301a633566153cbd0b93d11d8379", size = 152185, upload-time = "2025-11-20T20:28:56.327Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/04/74127fc843314818edfa81b5540e26dd537353b123a4edc563109d8f17dd/s3transfer-0.16.0.tar.gz", hash = "sha256:8e990f13268025792229cd52fa10cb7163744bf56e719e0b9cb925ab79abf920", size = 153827, upload-time = "2025-12-01T02:30:59.114Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/e1/5ef25f52973aa12a19cf4e1375d00932d7fb354ffd310487ba7d44225c1a/s3transfer-0.15.0-py3-none-any.whl", hash = "sha256:6f8bf5caa31a0865c4081186689db1b2534cef721d104eb26101de4b9d6a5852", size = 85984, upload-time = "2025-11-20T20:28:55.046Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/51/727abb13f44c1fcf6d145979e1535a35794db0f6e450a0cb46aa24732fe2/s3transfer-0.16.0-py3-none-any.whl", hash = "sha256:18e25d66fed509e3868dc1572b3f427ff947dd2c56f844a5bf09481ad3f3b2fe", size = 86830, upload-time = "2025-12-01T02:30:57.729Z" },
 ]
 
 [[package]]
