@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: v0.0.27-9-g745c32f
+_commit: v0.0.28
 _src_path: gh:LabAutomationAndScreening/copier-aws-organization.git
 account_email_domain: gmail.com
 account_email_prefix: ejfine
