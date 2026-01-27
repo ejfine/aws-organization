@@ -82,7 +82,7 @@ jobs:
       - check-skip-duplicate
       - pulumi-workflow
     permissions:
-      statuses: write # needed for updating status on Dependabot PRs
+      statuses: write # needed for updating status on PRs
     if: always()
     steps:
       # - name: Set status for duplicate detection
@@ -117,7 +117,7 @@ jobs:
         run: |
           gh api \
             -X POST -H "Accept: application/vnd.github.v3+json" \
-            "${{ github.event.statuses_url }}" \
+            "${{ github.event.pull_request.statuses_url }}" \
             -f state=success -f context="required-check" -f description="✅ All required checks passed in the job triggered by pull_request" \
             -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
