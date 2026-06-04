@@ -11,7 +11,7 @@ central_infra_github_organization_name: ejfine
 central_infra_repo_name: aws-central-infrastructure
 configure_cloud_courier: true
 description: Manage my AWS organization
-install_claude_cli: false
+install_claude_cli: true
 is_open_source: true
 pull_from_ecr: false
 pulumi_stack_name: prod
