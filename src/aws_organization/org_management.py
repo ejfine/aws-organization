@@ -19,5 +19,5 @@ def get_org_admins() -> list[OrgAdmin]:
     ```
     """
     org_admins: list[OrgAdmin] = []
-    org_admins.append(OrgAdmin(user_info=UserInfo(username="eli.fine@elifine.com")))
+    org_admins.append(OrgAdmin(user_info=UserInfo(username="eli.fine")))
     return org_admins
