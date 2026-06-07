@@ -56,7 +56,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = ">=1.42.92" },
-    { name = "boto3-stubs", extras = ["all"], specifier = ">=1.42.92" },
+    { name = "boto3-stubs", extras = ["all"], specifier = ">=1.43.24" },
     { name = "ephemeral-pulumi-deploy", specifier = ">=0.0.6" },
     { name = "lab-auto-pulumi", specifier = ">=0.2.0" },
     { name = "pulumi", specifier = ">=3.234.0" },
@@ -86,15 +86,15 @@ wheels = [
 
 [[package]]
 name = "boto3-stubs"
-version = "1.43.22"
+version = "1.43.24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore-stubs" },
     { name = "types-s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/45/dc/4b7e210570c7c56bf80a7ffcdccfd8aa170363121a914df102b13070a306/boto3_stubs-1.43.22.tar.gz", hash = "sha256:783899d1baf870f69bb5dd28deb8018aa91438cf6c407691cc597a7f6753bbac", size = 102968, upload-time = "2026-06-03T21:49:58.105Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/94/2dbcc9d819f059694a306b14bfb3b0ad82830f73f816e36bee37ceb48945/boto3_stubs-1.43.24.tar.gz", hash = "sha256:1b60837a40179f668a6b2f5206fd67acb4bf636aff2cd401f84fcf651cb4c988", size = 102996, upload-time = "2026-06-05T20:45:37.393Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/53/8c490b166cf6d5f9900fc591c5abc94f5b84a6b7e8147ee28ad5b3efd702/boto3_stubs-1.43.22-py3-none-any.whl", hash = "sha256:db4bd62865621f449bca619bfd39ab79220eb3df13ae143bc9eaa7b814164a64", size = 70830, upload-time = "2026-06-03T21:49:54.085Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/1f/d780e345285e20344b0da7cca1ee19beda8cc1f841e4c12bdb2209eefde2/boto3_stubs-1.43.24-py3-none-any.whl", hash = "sha256:d5d8c00769d46970efedbbe24fb99c26568dfa4cc12a9acb2ddba8667160dcc1", size = 70830, upload-time = "2026-06-05T20:45:32.597Z" },
 ]
 
 [package.optional-dependencies]
