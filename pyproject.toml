@@ -12,10 +12,10 @@ dependencies = [
 
     # Managed by upstream template
     "pyright>=1.1.409",
-    "pytest>=9.0.3",
+    "pytest>=9.1.0",
     "pytest-cov>=7.1.0",
     "pytest-randomly>=4.1.0",
-    "pulumi>=3.234.0",
+    "pulumi>=3.246.0",
     "pulumi-aws>=7.28.0",
     "pulumi-aws-native>=1.63.0",
     "pulumi-command>=1.2.1",
