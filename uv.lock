@@ -59,13 +59,13 @@ requires-dist = [
     { name = "boto3-stubs", extras = ["all"], specifier = ">=1.42.92" },
     { name = "ephemeral-pulumi-deploy", specifier = ">=0.0.6" },
     { name = "lab-auto-pulumi", specifier = ">=0.2.0" },
-    { name = "pulumi", specifier = ">=3.234.0" },
-    { name = "pulumi-aws", specifier = ">=7.28.0" },
-    { name = "pulumi-aws-native", specifier = ">=1.63.0" },
+    { name = "pulumi", specifier = ">=3.247.0" },
+    { name = "pulumi-aws", specifier = ">=7.34.0" },
+    { name = "pulumi-aws-native", specifier = ">=1.69.0" },
     { name = "pulumi-command", specifier = ">=1.2.1" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pyright", specifier = ">=1.1.409" },
-    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-randomly", specifier = ">=4.1.0" },
 ]
@@ -4733,7 +4733,7 @@ wheels = [
 
 [[package]]
 name = "pulumi"
-version = "3.245.0"
+version = "3.247.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "debugpy" },
@@ -4749,35 +4749,35 @@ dependencies = [
     { name = "semver" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/90/8fea7e2bf228b9c74bd66ece6449c1fc28bf62e1966be3bc7635a311d96f/pulumi-3.245.0-py3-none-any.whl", hash = "sha256:71711246f0e494c0adffbb6fa5a1e96d653f9beb45dff6af4fd1deebfeecd426", size = 406647, upload-time = "2026-06-04T08:54:11.005Z" },
+    { url = "https://files.pythonhosted.org/packages/22/03/e14c9fe2e6e7fb57e80ceaab0f5b5678ad96388e6eb5cf04f16870820aee/pulumi-3.247.0-py3-none-any.whl", hash = "sha256:ca21453de7d410fc072343379cc905175c8214ab6077d941a76ff7308fdbfee7", size = 408018, upload-time = "2026-06-18T14:12:01.302Z" },
 ]
 
 [[package]]
 name = "pulumi-aws"
-version = "7.32.0"
+version = "7.34.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "parver" },
     { name = "pulumi" },
     { name = "semver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/49/3b/e51d6a99157a2fc04913eafc994aaed0644e1934b348853f0e3a828cad9b/pulumi_aws-7.32.0.tar.gz", hash = "sha256:c10469b6fe05714c7e3404852d6065f4bd9cbec6b01fa5dfc0296a776f26e3f4", size = 9619103, upload-time = "2026-05-29T21:10:00.024Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/87/939dfa58fd377d1dcca02adccac24fad5a9ea6caad61a59b87cb8cd7833f/pulumi_aws-7.34.0.tar.gz", hash = "sha256:ee3557e16d6be6f8c59c080383abb8b18d021ff5752493d05e1e5fb196eed93d", size = 9697055, upload-time = "2026-06-17T11:03:51.262Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/df/e07d9b99ee6861a02a5e26e250238cf5034a07ae557d42dacf8825e12375/pulumi_aws-7.32.0-py3-none-any.whl", hash = "sha256:1e2795de9457b33f4447f0b7076d7a34a7b4abce3449e4be6a825392c1dbf269", size = 12776205, upload-time = "2026-05-29T21:09:56.363Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/1c/198d10e93ab2cc597a5628be5dc82a81014d3b81f17e1e4d3d3bf7041624/pulumi_aws-7.34.0-py3-none-any.whl", hash = "sha256:69edfce5a31ba8c50b10db51f08a7ab7c313d2af7129c74b2105bdfafc5368fe", size = 12868377, upload-time = "2026-06-17T11:03:48.384Z" },
 ]
 
 [[package]]
 name = "pulumi-aws-native"
-version = "1.68.0"
+version = "1.69.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "parver" },
     { name = "pulumi" },
     { name = "semver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/38/fd/31bb1eab90a427c85d94884ffa975e6352a7b029c67795ae2fb47f171ad7/pulumi_aws_native-1.68.0.tar.gz", hash = "sha256:da0824f4c5e103df236df8a3ed8852449d1d6e3126a6830dcdb25e6a433d1de1", size = 8747055, upload-time = "2026-06-01T08:53:25.293Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/fc/0b6596b56119515753b4b6d9d62aa5a4a02c382e4aa320b72744a29de647/pulumi_aws_native-1.69.0.tar.gz", hash = "sha256:bf4b2004513bed223bcefc1180037badf4ff4a3159dc437d0a142e4f179f3329", size = 8803641, upload-time = "2026-06-15T08:49:07.402Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ae/86/7c1972731da3c22cbe927c577477cf3a7d4f6b2ee12b256706c7de08cf70/pulumi_aws_native-1.68.0-py3-none-any.whl", hash = "sha256:b7e10a53c681a43e3f78b4ca3f8e4409ea0bdf3103aaeee0c66d2b9be50087ef", size = 12388980, upload-time = "2026-06-01T08:53:22.705Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/05/aa54dce0d75342d55c32e7ab30fb0b374f9e35aef87a0908a1ea8dd0ca10/pulumi_aws_native-1.69.0-py3-none-any.whl", hash = "sha256:7b08cfdeed5e014ccadeacad1773c3a00c86270c6d1424cb7cfebf50d711b4cc", size = 12481779, upload-time = "2026-06-15T08:49:04.326Z" },
 ]
 
 [[package]]
@@ -4889,7 +4889,7 @@ wheels = [
 
 [[package]]
 name = "pytest"
-version = "9.0.3"
+version = "9.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -4898,9 +4898,9 @@ dependencies = [
     { name = "pluggy" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/0d/549bd94f1a0a402dc8cf64563a117c0f3765662e2e668477624baeec44d5/pytest-9.0.3.tar.gz", hash = "sha256:b86ada508af81d19edeb213c681b1d48246c1a91d304c6c81a427674c17eb91c", size = 1572165, upload-time = "2026-04-07T17:16:18.027Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/47/b9efed96c114afcfa3c9d3fe98a76a1d14c74a9e266d397cf6eb64be5e01/pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313", size = 1636369, upload-time = "2026-06-19T10:58:32.857Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d4/24/a372aaf5c9b7208e7112038812994107bc65a84cd00e0354a88c2c77a617/pytest-9.0.3-py3-none-any.whl", hash = "sha256:2c5efc453d45394fdd706ade797c0a81091eccd1d6e4bccfcd476e2b8e0ab5d9", size = 375249, upload-time = "2026-04-07T17:16:16.13Z" },
+    { url = "https://files.pythonhosted.org/packages/24/25/1de2678b631f5a49215c6c96fff41ba892b0a34df68d6d80292b1b48aa7f/pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c", size = 386536, upload-time = "2026-06-19T10:58:31.347Z" },
 ]
 
 [[package]]
