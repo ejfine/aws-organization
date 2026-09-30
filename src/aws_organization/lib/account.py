@@ -1,3 +1,10 @@
+# ============== WARNING ==============================================================================
+# File is managed by copier template: gh:LabAutomationAndScreening/copier-aws-organization.git
+# See .config/.copier-managed-files.json for details.
+#
+# You are welcome to make changes to this file in your repo if they are custom to your project,
+# but if the change should be shared with other projects, please backport it to the template repo.
+# =====================================================================================================
 import logging
 import time
 from collections.abc import Sequence
@@ -23,14 +30,14 @@ class SleepProvider(dynamic.ResourceProvider):
     serialize_as_secret_always = False
 
     @override
-    def create(self, props: dict[str, Any]) -> CreateResult:
+    def create(self, props: dict[str, Any]) -> CreateResult:  # pyrefly: ignore[explicit-any] # signature must match pulumi's dynamic.ResourceProvider.create
         duration = props["seconds"]
         logger.info(f"Sleeping for {duration} seconds for the creation of the resource {props['name']}")
         time.sleep(duration)
         return CreateResult(id_="sleep-done", outs={})
 
     @override
-    def delete(self, _id: str, _props: dict[str, Any]) -> None:
+    def delete(self, _id: str, _props: dict[str, Any]) -> None:  # pyrefly: ignore[explicit-any] # signature must match pulumi's dynamic.ResourceProvider.delete
         duration = _props["seconds"]
         logger.info(f"Sleeping for {duration} seconds for the deletion of the resource ID {_id} named {_props['name']}")
         time.sleep(duration)
