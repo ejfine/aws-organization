@@ -1,3 +1,10 @@
+# ============== WARNING ==============================================================================
+# File is managed by copier template: gh:LabAutomationAndScreening/copier-aws-organization.git
+# See .config/.copier-managed-files.json for details.
+#
+# You are welcome to make changes to this file in your repo if they are custom to your project,
+# but if the change should be shared with other projects, please backport it to the template repo.
+# =====================================================================================================
 import pulumi_aws
 from ephemeral_pulumi_deploy import get_config
 from ephemeral_pulumi_deploy.utils import common_tags
@@ -5,7 +12,7 @@ from ephemeral_pulumi_deploy.utils import common_tags_native
 from ephemeral_pulumi_deploy.utils import get_aws_account_id
 from lab_auto_pulumi import GITHUB_PREVIEW_TOKEN_SECRET_NAME
 from lab_auto_pulumi import MANUAL_IAC_SECRETS_PREFIX
-from lab_auto_pulumi import ORG_MANAGED_SSM_PARAM_PREFIX
+from lab_auto_pulumi import ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX
 from lab_auto_pulumi import WORKLOAD_INFO_SSM_PARAM_PREFIX
 from lab_auto_pulumi import AwsAccountInfo
 from lab_auto_pulumi import AwsLogicalWorkload
@@ -112,7 +119,7 @@ def create_central_infra_workload(org_units: OrganizationalUnits) -> tuple[Commo
         f"{central_infra_workload_name}-management-account-id",
         type=ssm.ParameterType.STRING,
         description="The AWS Account ID of the management account",
-        name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/management-account-id",
+        name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/management-account-id",
         tags=common_tags(),
         value=get_aws_account_id(),
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account, delete_before_replace=True),
@@ -129,7 +136,7 @@ def create_central_infra_workload(org_units: OrganizationalUnits) -> tuple[Commo
     _ = ssm.Parameter(
         "central-infra-state-bucket-name",
         type=ssm.ParameterType.STRING,
-        name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/infra-state-bucket-name",
+        name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/infra-state-bucket-name",
         tags=common_tags(),
         value=central_state_bucket.bucket_name.apply(lambda x: f"{x}"),
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account, delete_before_replace=True),
@@ -139,7 +146,7 @@ def create_central_infra_workload(org_units: OrganizationalUnits) -> tuple[Commo
     _ = ssm.Parameter(
         "central-infra-shared-kms-key-arn",
         type=ssm.ParameterType.STRING,
-        name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/infra-state-kms-key-arn",
+        name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/infra-state-kms-key-arn",
         tags=common_tags(),
         value=kms_key_arn,
         opts=ResourceOptions(provider=central_infra_provider, parent=central_infra_account, delete_before_replace=True),
